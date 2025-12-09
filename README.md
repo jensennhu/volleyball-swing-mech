@@ -46,23 +46,6 @@ pip install -r requirements.txt
 - numpy
 - scipy
 
-### R Version
-
-```r
-# Install required packages
-install.packages(c("tidyverse", "ggplot2", "gridExtra", "signal", "pracma"))
-```
-
-**Requirements:**
-- R 4.0+
-- tidyverse
-- ggplot2
-- gridExtra
-- signal
-- pracma
-
----
-
 ## 🚀 Quick Start
 
 ### Python (Video Processing)
@@ -93,46 +76,6 @@ from volleyball_spike_analyzer import extract_spike_features
 features = extract_spike_features(data)
 print(f"Feature matrix shape: {features.shape}")
 ```
-
-### R (Data Analysis)
-
-```r
-source("volleyball_spike_analyzer.R")
-
-# Load pre-extracted pose data
-data <- load_pose_data("pose_landmarks.csv")
-
-# Analyze biomechanics
-results <- analyze_spike_biomechanics(
-  data,
-  player_height_cm = 180,
-  spike_hand = "auto"
-)
-
-# Print summary
-print_performance_summary(results)
-
-# Create visualizations
-plot_spike_analysis(results, output_file = "spike_analysis.png")
-
-# Detect phases
-phases <- detect_spike_phases(results)
-
-# Extract features
-features <- extract_spike_features(results)
-
-# Export results
-export_results(results, output_dir = "analysis_output")
-```
-
----
-
-## 📊 Data Format for R Version
-
-The R version requires pre-extracted pose landmark data. You can generate this using:
-1. The Python version's MediaPipe processing
-2. Other pose estimation tools (OpenPose, AlphaPose, etc.)
-3. Manual annotation tools
 
 ### Expected CSV Format (Wide Format)
 
@@ -223,32 +166,6 @@ for video_path in glob.glob('videos/*.mp4'):
 with open('all_spike_analyses.pkl', 'wb') as f:
     pickle.dump(results_all, f)
 ```
-
-### R: Comparative Analysis
-
-```r
-# Analyze multiple athletes
-athletes <- c("player1.csv", "player2.csv", "player3.csv")
-all_results <- list()
-
-for (athlete_file in athletes) {
-  data <- load_pose_data(athlete_file)
-  results <- analyze_spike_biomechanics(data, player_height_cm = 180)
-  athlete_name <- gsub(".csv", "", basename(athlete_file))
-  all_results[[athlete_name]] <- results
-  
-  print_performance_summary(results)
-}
-
-# Compare jump heights
-jump_heights <- sapply(all_results, function(r) r$jump_height_cm)
-barplot(jump_heights, 
-        main = "Jump Height Comparison",
-        ylab = "Height (cm)",
-        col = "#4ECDC4")
-```
-
----
 
 ## 📈 Output Files
 
@@ -366,28 +283,6 @@ print(os.path.exists('spike.mp4'))  # Should print True
 - Ensure high-contrast clothing
 - Remove background clutter
 - Use higher resolution video
-
-### R Issues
-
-**"Column not found"**
-```r
-# Check your CSV column names
-colnames(data)
-
-# Ensure they match expected format:
-# right_shoulder_x, right_shoulder_y, etc.
-```
-
-**Smoothing errors**
-```r
-# Reduce window length for short sequences
-results <- analyze_spike_biomechanics(
-  data,
-  window_length = 3  # Smaller window
-)
-```
-
----
 
 ## 📚 Technical Details
 
