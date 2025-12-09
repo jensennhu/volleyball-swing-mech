@@ -1,0 +1,210 @@
+# Volleyball Spike Analyzer - .gitignore
+
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# Pickle files (analysis data)
+*.pkl
+*.pickle
+
+# ============================================
+# R
+# ============================================
+.Rhistory
+.RData
+.Rapp.history
+.Rproj.user/
+*.Rproj
+.Renviron
+
+# R session data
+.RData
+.Rhistory
+
+# R temporary files
+*-Ex.R
+*.Rout
+
+# R plots
+Rplots.pdf
+
+# ============================================
+# Analysis Output Files
+# ============================================
+# Generated visualizations
+spike_analysis.png
+analysis_output/
+results/
+*.png
+*.jpg
+*.jpeg
+
+# Video files (too large for git)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+
+# Data exports
+spike_analysis_data.pkl
+spike_data_for_training.pkl
+biomechanics_data.csv
+summary_metrics.csv
+feature_matrix.csv
+pose_data_for_r.csv
+
+# Output directories
+output/
+outputs/
+analysis_output/
+spike_analysis_output/
+
+# ============================================
+# IDEs and Editors
+# ============================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# RStudio
+.Rproj.user
+
+# ============================================
+# Operating System
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# Logs and Databases
+# ============================================
+*.log
+*.sql
+*.sqlite
+*.db
+
+# ============================================
+# Documentation Build
+# ============================================
+docs/_build/
+site/
+
+# ============================================
+# Testing
+# ============================================
+.pytest_cache/
+.coverage
+.tox/
+htmlcov/
+.pytest_cache/
+
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# ============================================
+# Package Management
+# ============================================
+# Python
+*.whl
+.eggs/
+
+# R
+packrat/lib*/
+packrat/src/
+
+# ============================================
+# Keep Example Files (use ! to negate ignore)
+# ============================================
+!example_pose_data.csv
+!examples/
