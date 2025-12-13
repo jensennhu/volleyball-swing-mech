@@ -208,3 +208,6 @@ packrat/src/
 # ============================================
 !example_pose_data.csv
 !examples/
+
+
+*.png
