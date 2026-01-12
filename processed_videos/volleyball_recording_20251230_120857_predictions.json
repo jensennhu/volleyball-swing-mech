@@ -1,0 +1,1449 @@
+{
+  "video_path": "recorded_videos/volleyball_recording_20251230_120857.mp4",
+  "processed_frames": 542,
+  "fps": 30.0,
+  "resolution": "1280x720",
+  "total_predictions": 120,
+  "predictions": [
+    {
+      "frame": 12,
+      "timestamp": 0.4,
+      "prediction": "swing",
+      "confidence": 0.9608080983161926,
+      "probabilities": {
+        "approach": 0.005094702355563641,
+        "jump": 0.026765989139676094,
+        "land": 0.007331178057938814,
+        "swing": 0.9608080983161926
+      }
+    },
+    {
+      "frame": 15,
+      "timestamp": 0.5,
+      "prediction": "land",
+      "confidence": 0.9105697870254517,
+      "probabilities": {
+        "approach": 0.024278687313199043,
+        "jump": 0.007477559149265289,
+        "land": 0.9105697870254517,
+        "swing": 0.05767393857240677
+      }
+    },
+    {
+      "frame": 18,
+      "timestamp": 0.6,
+      "prediction": "land",
+      "confidence": 0.9969674944877625,
+      "probabilities": {
+        "approach": 0.002065998036414385,
+        "jump": 0.0004083992971573025,
+        "land": 0.9969674944877625,
+        "swing": 0.0005581059958785772
+      }
+    },
+    {
+      "frame": 21,
+      "timestamp": 0.7,
+      "prediction": "land",
+      "confidence": 0.9957675933837891,
+      "probabilities": {
+        "approach": 0.0029195966199040413,
+        "jump": 0.000559294072445482,
+        "land": 0.9957675933837891,
+        "swing": 0.0007535858894698322
+      }
+    },
+    {
+      "frame": 24,
+      "timestamp": 0.8,
+      "prediction": "land",
+      "confidence": 0.9955058097839355,
+      "probabilities": {
+        "approach": 0.0031646264251321554,
+        "jump": 0.0005857086507603526,
+        "land": 0.9955058097839355,
+        "swing": 0.0007439007749781013
+      }
+    },
+    {
+      "frame": 27,
+      "timestamp": 0.9,
+      "prediction": "land",
+      "confidence": 0.9954839944839478,
+      "probabilities": {
+        "approach": 0.0035280687734484673,
+        "jump": 0.0005064407014288008,
+        "land": 0.9954839944839478,
+        "swing": 0.00048156295088119805
+      }
+    },
+    {
+      "frame": 30,
+      "timestamp": 1.0,
+      "prediction": "land",
+      "confidence": 0.9879129528999329,
+      "probabilities": {
+        "approach": 0.010150800459086895,
+        "jump": 0.0009458757704123855,
+        "land": 0.9879129528999329,
+        "swing": 0.0009902743622660637
+      }
+    },
+    {
+      "frame": 33,
+      "timestamp": 1.1,
+      "prediction": "land",
+      "confidence": 0.9416146874427795,
+      "probabilities": {
+        "approach": 0.045503340661525726,
+        "jump": 0.007624391466379166,
+        "land": 0.9416146874427795,
+        "swing": 0.005257504526525736
+      }
+    },
+    {
+      "frame": 36,
+      "timestamp": 1.2,
+      "prediction": "land",
+      "confidence": 0.9553020000457764,
+      "probabilities": {
+        "approach": 0.02574547752737999,
+        "jump": 0.01230588834732771,
+        "land": 0.9553020000457764,
+        "swing": 0.006646669004112482
+      }
+    },
+    {
+      "frame": 39,
+      "timestamp": 1.3,
+      "prediction": "land",
+      "confidence": 0.9699966907501221,
+      "probabilities": {
+        "approach": 0.017745019868016243,
+        "jump": 0.006928862538188696,
+        "land": 0.9699966907501221,
+        "swing": 0.005329383071511984
+      }
+    },
+    {
+      "frame": 42,
+      "timestamp": 1.4,
+      "prediction": "land",
+      "confidence": 0.9815112948417664,
+      "probabilities": {
+        "approach": 0.011612020432949066,
+        "jump": 0.003884646575897932,
+        "land": 0.9815112948417664,
+        "swing": 0.0029921159148216248
+      }
+    },
+    {
+      "frame": 45,
+      "timestamp": 1.5,
+      "prediction": "land",
+      "confidence": 0.9870443940162659,
+      "probabilities": {
+        "approach": 0.008330053649842739,
+        "jump": 0.002610432216897607,
+        "land": 0.9870443940162659,
+        "swing": 0.002015091711655259
+      }
+    },
+    {
+      "frame": 48,
+      "timestamp": 1.6,
+      "prediction": "land",
+      "confidence": 0.9932392835617065,
+      "probabilities": {
+        "approach": 0.004625433590263128,
+        "jump": 0.001203504973091185,
+        "land": 0.9932392835617065,
+        "swing": 0.000931728514842689
+      }
+    },
+    {
+      "frame": 51,
+      "timestamp": 1.7,
+      "prediction": "land",
+      "confidence": 0.9968822002410889,
+      "probabilities": {
+        "approach": 0.002165005309507251,
+        "jump": 0.0004838133754674345,
+        "land": 0.9968822002410889,
+        "swing": 0.0004689995548687875
+      }
+    },
+    {
+      "frame": 54,
+      "timestamp": 1.8,
+      "prediction": "land",
+      "confidence": 0.9972266554832458,
+      "probabilities": {
+        "approach": 0.0018465141765773296,
+        "jump": 0.00041901483200490475,
+        "land": 0.9972266554832458,
+        "swing": 0.0005078435060568154
+      }
+    },
+    {
+      "frame": 57,
+      "timestamp": 1.9,
+      "prediction": "land",
+      "confidence": 0.9981424808502197,
+      "probabilities": {
+        "approach": 0.0012149998219683766,
+        "jump": 0.0002794006431940943,
+        "land": 0.9981424808502197,
+        "swing": 0.00036315093166194856
+      }
+    },
+    {
+      "frame": 60,
+      "timestamp": 2.0,
+      "prediction": "land",
+      "confidence": 0.9982852339744568,
+      "probabilities": {
+        "approach": 0.0011169995414093137,
+        "jump": 0.0002524220326449722,
+        "land": 0.9982852339744568,
+        "swing": 0.0003454012330621481
+      }
+    },
+    {
+      "frame": 63,
+      "timestamp": 2.1,
+      "prediction": "land",
+      "confidence": 0.9977211356163025,
+      "probabilities": {
+        "approach": 0.00143008294980973,
+        "jump": 0.0003514715644996613,
+        "land": 0.9977211356163025,
+        "swing": 0.0004972863243892789
+      }
+    },
+    {
+      "frame": 66,
+      "timestamp": 2.2,
+      "prediction": "land",
+      "confidence": 0.997199296951294,
+      "probabilities": {
+        "approach": 0.0017134370282292366,
+        "jump": 0.0004423734499141574,
+        "land": 0.997199296951294,
+        "swing": 0.0006448565982282162
+      }
+    },
+    {
+      "frame": 69,
+      "timestamp": 2.3,
+      "prediction": "land",
+      "confidence": 0.996613085269928,
+      "probabilities": {
+        "approach": 0.0020111603662371635,
+        "jump": 0.0005554109229706228,
+        "land": 0.996613085269928,
+        "swing": 0.0008203730103559792
+      }
+    },
+    {
+      "frame": 72,
+      "timestamp": 2.4,
+      "prediction": "land",
+      "confidence": 0.996313750743866,
+      "probabilities": {
+        "approach": 0.0021709720604121685,
+        "jump": 0.0006114720017649233,
+        "land": 0.996313750743866,
+        "swing": 0.0009037857525981963
+      }
+    },
+    {
+      "frame": 75,
+      "timestamp": 2.5,
+      "prediction": "land",
+      "confidence": 0.9960474371910095,
+      "probabilities": {
+        "approach": 0.0023102443665266037,
+        "jump": 0.0006526400684379041,
+        "land": 0.9960474371910095,
+        "swing": 0.0009897320996969938
+      }
+    },
+    {
+      "frame": 78,
+      "timestamp": 2.6,
+      "prediction": "land",
+      "confidence": 0.9961798191070557,
+      "probabilities": {
+        "approach": 0.0023068625014275312,
+        "jump": 0.0006125570507720113,
+        "land": 0.9961798191070557,
+        "swing": 0.0009007534827105701
+      }
+    },
+    {
+      "frame": 81,
+      "timestamp": 2.7,
+      "prediction": "land",
+      "confidence": 0.9895520806312561,
+      "probabilities": {
+        "approach": 0.006160471122711897,
+        "jump": 0.002051055431365967,
+        "land": 0.9895520806312561,
+        "swing": 0.002236388623714447
+      }
+    },
+    {
+      "frame": 84,
+      "timestamp": 2.8,
+      "prediction": "land",
+      "confidence": 0.9574568867683411,
+      "probabilities": {
+        "approach": 0.020060675218701363,
+        "jump": 0.012447290122509003,
+        "land": 0.9574568867683411,
+        "swing": 0.010035190731287003
+      }
+    },
+    {
+      "frame": 87,
+      "timestamp": 2.9,
+      "prediction": "land",
+      "confidence": 0.7431651949882507,
+      "probabilities": {
+        "approach": 0.04777571186423302,
+        "jump": 0.12846095860004425,
+        "land": 0.7431651949882507,
+        "swing": 0.08059816807508469
+      }
+    },
+    {
+      "frame": 102,
+      "timestamp": 3.4,
+      "prediction": "land",
+      "confidence": 0.856532633304596,
+      "probabilities": {
+        "approach": 0.05125203728675842,
+        "jump": 0.0748303160071373,
+        "land": 0.856532633304596,
+        "swing": 0.01738511025905609
+      }
+    },
+    {
+      "frame": 105,
+      "timestamp": 3.5,
+      "prediction": "land",
+      "confidence": 0.9175000190734863,
+      "probabilities": {
+        "approach": 0.04092072695493698,
+        "jump": 0.03132478892803192,
+        "land": 0.9175000190734863,
+        "swing": 0.010254504159092903
+      }
+    },
+    {
+      "frame": 108,
+      "timestamp": 3.6,
+      "prediction": "land",
+      "confidence": 0.9087169766426086,
+      "probabilities": {
+        "approach": 0.038481321185827255,
+        "jump": 0.038520269095897675,
+        "land": 0.9087169766426086,
+        "swing": 0.0142814414575696
+      }
+    },
+    {
+      "frame": 111,
+      "timestamp": 3.7,
+      "prediction": "land",
+      "confidence": 0.8693056106567383,
+      "probabilities": {
+        "approach": 0.034473635256290436,
+        "jump": 0.058856070041656494,
+        "land": 0.8693056106567383,
+        "swing": 0.03736469894647598
+      }
+    },
+    {
+      "frame": 123,
+      "timestamp": 4.1,
+      "prediction": "land",
+      "confidence": 0.7832857966423035,
+      "probabilities": {
+        "approach": 0.027512559667229652,
+        "jump": 0.12058050185441971,
+        "land": 0.7832857966423035,
+        "swing": 0.06862112879753113
+      }
+    },
+    {
+      "frame": 126,
+      "timestamp": 4.2,
+      "prediction": "land",
+      "confidence": 0.9505683779716492,
+      "probabilities": {
+        "approach": 0.017586078494787216,
+        "jump": 0.018359268084168434,
+        "land": 0.9505683779716492,
+        "swing": 0.013486253097653389
+      }
+    },
+    {
+      "frame": 129,
+      "timestamp": 4.3,
+      "prediction": "land",
+      "confidence": 0.9019511342048645,
+      "probabilities": {
+        "approach": 0.03127960115671158,
+        "jump": 0.04043363034725189,
+        "land": 0.9019511342048645,
+        "swing": 0.02633560635149479
+      }
+    },
+    {
+      "frame": 135,
+      "timestamp": 4.5,
+      "prediction": "jump",
+      "confidence": 0.91309654712677,
+      "probabilities": {
+        "approach": 0.018297815695405006,
+        "jump": 0.91309654712677,
+        "land": 0.033199235796928406,
+        "swing": 0.03540637716650963
+      }
+    },
+    {
+      "frame": 138,
+      "timestamp": 4.6,
+      "prediction": "jump",
+      "confidence": 0.9393696784973145,
+      "probabilities": {
+        "approach": 0.009844490326941013,
+        "jump": 0.9393696784973145,
+        "land": 0.014771813526749611,
+        "swing": 0.03601391613483429
+      }
+    },
+    {
+      "frame": 141,
+      "timestamp": 4.7,
+      "prediction": "jump",
+      "confidence": 0.8699060678482056,
+      "probabilities": {
+        "approach": 0.021549167111516,
+        "jump": 0.8699060678482056,
+        "land": 0.02807074971497059,
+        "swing": 0.08047398924827576
+      }
+    },
+    {
+      "frame": 144,
+      "timestamp": 4.8,
+      "prediction": "jump",
+      "confidence": 0.8905951380729675,
+      "probabilities": {
+        "approach": 0.0184947419911623,
+        "jump": 0.8905951380729675,
+        "land": 0.026832951232790947,
+        "swing": 0.0640772134065628
+      }
+    },
+    {
+      "frame": 147,
+      "timestamp": 4.9,
+      "prediction": "jump",
+      "confidence": 0.938504159450531,
+      "probabilities": {
+        "approach": 0.00811748392879963,
+        "jump": 0.938504159450531,
+        "land": 0.016235284507274628,
+        "swing": 0.037143103778362274
+      }
+    },
+    {
+      "frame": 150,
+      "timestamp": 5.0,
+      "prediction": "jump",
+      "confidence": 0.9722537398338318,
+      "probabilities": {
+        "approach": 0.003134820843115449,
+        "jump": 0.9722537398338318,
+        "land": 0.007911157794296741,
+        "swing": 0.016700303182005882
+      }
+    },
+    {
+      "frame": 153,
+      "timestamp": 5.1,
+      "prediction": "jump",
+      "confidence": 0.9614136219024658,
+      "probabilities": {
+        "approach": 0.00446401396766305,
+        "jump": 0.9614136219024658,
+        "land": 0.009295772761106491,
+        "swing": 0.024826498702168465
+      }
+    },
+    {
+      "frame": 156,
+      "timestamp": 5.2,
+      "prediction": "jump",
+      "confidence": 0.9565948843955994,
+      "probabilities": {
+        "approach": 0.004527679644525051,
+        "jump": 0.9565948843955994,
+        "land": 0.00860895961523056,
+        "swing": 0.030268564820289612
+      }
+    },
+    {
+      "frame": 159,
+      "timestamp": 5.3,
+      "prediction": "jump",
+      "confidence": 0.773723304271698,
+      "probabilities": {
+        "approach": 0.014833762310445309,
+        "jump": 0.773723304271698,
+        "land": 0.03231468424201012,
+        "swing": 0.1791282445192337
+      }
+    },
+    {
+      "frame": 168,
+      "timestamp": 5.6,
+      "prediction": "land",
+      "confidence": 0.9098895788192749,
+      "probabilities": {
+        "approach": 0.019420253112912178,
+        "jump": 0.010166584514081478,
+        "land": 0.9098895788192749,
+        "swing": 0.06052356958389282
+      }
+    },
+    {
+      "frame": 171,
+      "timestamp": 5.7,
+      "prediction": "land",
+      "confidence": 0.939601719379425,
+      "probabilities": {
+        "approach": 0.0143924281001091,
+        "jump": 0.006744328420609236,
+        "land": 0.939601719379425,
+        "swing": 0.03926163539290428
+      }
+    },
+    {
+      "frame": 174,
+      "timestamp": 5.8,
+      "prediction": "land",
+      "confidence": 0.921488881111145,
+      "probabilities": {
+        "approach": 0.01614668034017086,
+        "jump": 0.007736017927527428,
+        "land": 0.921488881111145,
+        "swing": 0.05462842434644699
+      }
+    },
+    {
+      "frame": 177,
+      "timestamp": 5.9,
+      "prediction": "land",
+      "confidence": 0.8972317576408386,
+      "probabilities": {
+        "approach": 0.01793684810400009,
+        "jump": 0.008977388963103294,
+        "land": 0.8972317576408386,
+        "swing": 0.07585398107767105
+      }
+    },
+    {
+      "frame": 180,
+      "timestamp": 6.0,
+      "prediction": "land",
+      "confidence": 0.8738414645195007,
+      "probabilities": {
+        "approach": 0.019503135234117508,
+        "jump": 0.010746731422841549,
+        "land": 0.8738414645195007,
+        "swing": 0.09590867906808853
+      }
+    },
+    {
+      "frame": 183,
+      "timestamp": 6.1,
+      "prediction": "land",
+      "confidence": 0.8365777134895325,
+      "probabilities": {
+        "approach": 0.021581126376986504,
+        "jump": 0.013472070917487144,
+        "land": 0.8365777134895325,
+        "swing": 0.12836907804012299
+      }
+    },
+    {
+      "frame": 186,
+      "timestamp": 6.2,
+      "prediction": "land",
+      "confidence": 0.8054748177528381,
+      "probabilities": {
+        "approach": 0.022966725751757622,
+        "jump": 0.01595897600054741,
+        "land": 0.8054748177528381,
+        "swing": 0.15559951961040497
+      }
+    },
+    {
+      "frame": 189,
+      "timestamp": 6.3,
+      "prediction": "land",
+      "confidence": 0.7583348751068115,
+      "probabilities": {
+        "approach": 0.026277896016836166,
+        "jump": 0.018259450793266296,
+        "land": 0.7583348751068115,
+        "swing": 0.19712772965431213
+      }
+    },
+    {
+      "frame": 192,
+      "timestamp": 6.4,
+      "prediction": "land",
+      "confidence": 0.759093701839447,
+      "probabilities": {
+        "approach": 0.0291445255279541,
+        "jump": 0.018599148839712143,
+        "land": 0.759093701839447,
+        "swing": 0.19316259026527405
+      }
+    },
+    {
+      "frame": 195,
+      "timestamp": 6.5,
+      "prediction": "land",
+      "confidence": 0.828325629234314,
+      "probabilities": {
+        "approach": 0.038567107170820236,
+        "jump": 0.02263641729950905,
+        "land": 0.828325629234314,
+        "swing": 0.11047080159187317
+      }
+    },
+    {
+      "frame": 198,
+      "timestamp": 6.6,
+      "prediction": "land",
+      "confidence": 0.9051752090454102,
+      "probabilities": {
+        "approach": 0.034713033586740494,
+        "jump": 0.015202422626316547,
+        "land": 0.9051752090454102,
+        "swing": 0.0449092723429203
+      }
+    },
+    {
+      "frame": 201,
+      "timestamp": 6.7,
+      "prediction": "land",
+      "confidence": 0.9123498797416687,
+      "probabilities": {
+        "approach": 0.03809626027941704,
+        "jump": 0.015926465392112732,
+        "land": 0.9123498797416687,
+        "swing": 0.03362744301557541
+      }
+    },
+    {
+      "frame": 204,
+      "timestamp": 6.8,
+      "prediction": "land",
+      "confidence": 0.9188078045845032,
+      "probabilities": {
+        "approach": 0.045627765357494354,
+        "jump": 0.014861629344522953,
+        "land": 0.9188078045845032,
+        "swing": 0.020702743902802467
+      }
+    },
+    {
+      "frame": 207,
+      "timestamp": 6.9,
+      "prediction": "land",
+      "confidence": 0.9185549020767212,
+      "probabilities": {
+        "approach": 0.05174075439572334,
+        "jump": 0.014798006042838097,
+        "land": 0.9185549020767212,
+        "swing": 0.01490634586662054
+      }
+    },
+    {
+      "frame": 210,
+      "timestamp": 7.0,
+      "prediction": "land",
+      "confidence": 0.8998493552207947,
+      "probabilities": {
+        "approach": 0.06646589189767838,
+        "jump": 0.01856081746518612,
+        "land": 0.8998493552207947,
+        "swing": 0.015123946592211723
+      }
+    },
+    {
+      "frame": 213,
+      "timestamp": 7.1,
+      "prediction": "land",
+      "confidence": 0.9013633131980896,
+      "probabilities": {
+        "approach": 0.06679611653089523,
+        "jump": 0.017995942384004593,
+        "land": 0.9013633131980896,
+        "swing": 0.013844575732946396
+      }
+    },
+    {
+      "frame": 216,
+      "timestamp": 7.2,
+      "prediction": "land",
+      "confidence": 0.9076834321022034,
+      "probabilities": {
+        "approach": 0.0629211962223053,
+        "jump": 0.016661053523421288,
+        "land": 0.9076834321022034,
+        "swing": 0.012734400108456612
+      }
+    },
+    {
+      "frame": 219,
+      "timestamp": 7.3,
+      "prediction": "land",
+      "confidence": 0.9171225428581238,
+      "probabilities": {
+        "approach": 0.05381317809224129,
+        "jump": 0.015278189443051815,
+        "land": 0.9171225428581238,
+        "swing": 0.01378613244742155
+      }
+    },
+    {
+      "frame": 222,
+      "timestamp": 7.4,
+      "prediction": "land",
+      "confidence": 0.9208990931510925,
+      "probabilities": {
+        "approach": 0.0497625432908535,
+        "jump": 0.01450190320611,
+        "land": 0.9208990931510925,
+        "swing": 0.01483647059649229
+      }
+    },
+    {
+      "frame": 225,
+      "timestamp": 7.5,
+      "prediction": "land",
+      "confidence": 0.9305124878883362,
+      "probabilities": {
+        "approach": 0.04088784381747246,
+        "jump": 0.013970297761261463,
+        "land": 0.9305124878883362,
+        "swing": 0.014629428274929523
+      }
+    },
+    {
+      "frame": 228,
+      "timestamp": 7.6,
+      "prediction": "land",
+      "confidence": 0.8918736577033997,
+      "probabilities": {
+        "approach": 0.06192222982645035,
+        "jump": 0.027097007259726524,
+        "land": 0.8918736577033997,
+        "swing": 0.01910710707306862
+      }
+    },
+    {
+      "frame": 231,
+      "timestamp": 7.7,
+      "prediction": "land",
+      "confidence": 0.7837813496589661,
+      "probabilities": {
+        "approach": 0.13908949494361877,
+        "jump": 0.05079708620905876,
+        "land": 0.7837813496589661,
+        "swing": 0.026332056149840355
+      }
+    },
+    {
+      "frame": 276,
+      "timestamp": 9.2,
+      "prediction": "approach",
+      "confidence": 0.7145792841911316,
+      "probabilities": {
+        "approach": 0.7145792841911316,
+        "jump": 0.05609932541847229,
+        "land": 0.17216046154499054,
+        "swing": 0.0571608729660511
+      }
+    },
+    {
+      "frame": 291,
+      "timestamp": 9.7,
+      "prediction": "approach",
+      "confidence": 0.778001606464386,
+      "probabilities": {
+        "approach": 0.778001606464386,
+        "jump": 0.040222495794296265,
+        "land": 0.13601769506931305,
+        "swing": 0.045758169144392014
+      }
+    },
+    {
+      "frame": 294,
+      "timestamp": 9.8,
+      "prediction": "approach",
+      "confidence": 0.7576382160186768,
+      "probabilities": {
+        "approach": 0.7576382160186768,
+        "jump": 0.041142869740724564,
+        "land": 0.1482783704996109,
+        "swing": 0.05294051766395569
+      }
+    },
+    {
+      "frame": 306,
+      "timestamp": 10.2,
+      "prediction": "approach",
+      "confidence": 0.7495388388633728,
+      "probabilities": {
+        "approach": 0.7495388388633728,
+        "jump": 0.043198082596063614,
+        "land": 0.15743885934352875,
+        "swing": 0.04982411861419678
+      }
+    },
+    {
+      "frame": 309,
+      "timestamp": 10.3,
+      "prediction": "approach",
+      "confidence": 0.7773680090904236,
+      "probabilities": {
+        "approach": 0.7773680090904236,
+        "jump": 0.04263542965054512,
+        "land": 0.1337471902370453,
+        "swing": 0.046249326318502426
+      }
+    },
+    {
+      "frame": 312,
+      "timestamp": 10.4,
+      "prediction": "approach",
+      "confidence": 0.8568915724754333,
+      "probabilities": {
+        "approach": 0.8568915724754333,
+        "jump": 0.028047144412994385,
+        "land": 0.09048233926296234,
+        "swing": 0.024578876793384552
+      }
+    },
+    {
+      "frame": 315,
+      "timestamp": 10.5,
+      "prediction": "approach",
+      "confidence": 0.8674274682998657,
+      "probabilities": {
+        "approach": 0.8674274682998657,
+        "jump": 0.02523280866444111,
+        "land": 0.08405174314975739,
+        "swing": 0.02328800968825817
+      }
+    },
+    {
+      "frame": 318,
+      "timestamp": 10.6,
+      "prediction": "approach",
+      "confidence": 0.8996695280075073,
+      "probabilities": {
+        "approach": 0.8996695280075073,
+        "jump": 0.018895043060183525,
+        "land": 0.06204256787896156,
+        "swing": 0.01939287595450878
+      }
+    },
+    {
+      "frame": 321,
+      "timestamp": 10.7,
+      "prediction": "approach",
+      "confidence": 0.8998106718063354,
+      "probabilities": {
+        "approach": 0.8998106718063354,
+        "jump": 0.019956137984991074,
+        "land": 0.060129549354314804,
+        "swing": 0.020103618502616882
+      }
+    },
+    {
+      "frame": 324,
+      "timestamp": 10.8,
+      "prediction": "approach",
+      "confidence": 0.8404683470726013,
+      "probabilities": {
+        "approach": 0.8404683470726013,
+        "jump": 0.031153716146945953,
+        "land": 0.08748573064804077,
+        "swing": 0.04089222475886345
+      }
+    },
+    {
+      "frame": 327,
+      "timestamp": 10.9,
+      "prediction": "approach",
+      "confidence": 0.7379316091537476,
+      "probabilities": {
+        "approach": 0.7379316091537476,
+        "jump": 0.05599755421280861,
+        "land": 0.13483673334121704,
+        "swing": 0.07123410701751709
+      }
+    },
+    {
+      "frame": 345,
+      "timestamp": 11.5,
+      "prediction": "approach",
+      "confidence": 0.7157425880432129,
+      "probabilities": {
+        "approach": 0.7157425880432129,
+        "jump": 0.09308779984712601,
+        "land": 0.11209946125745773,
+        "swing": 0.07907018065452576
+      }
+    },
+    {
+      "frame": 354,
+      "timestamp": 11.8,
+      "prediction": "jump",
+      "confidence": 0.7199531197547913,
+      "probabilities": {
+        "approach": 0.07571035623550415,
+        "jump": 0.7199531197547913,
+        "land": 0.04625781998038292,
+        "swing": 0.15807867050170898
+      }
+    },
+    {
+      "frame": 357,
+      "timestamp": 11.9,
+      "prediction": "jump",
+      "confidence": 0.7787870168685913,
+      "probabilities": {
+        "approach": 0.049234140664339066,
+        "jump": 0.7787870168685913,
+        "land": 0.03785211965441704,
+        "swing": 0.1341267228126526
+      }
+    },
+    {
+      "frame": 360,
+      "timestamp": 12.0,
+      "prediction": "jump",
+      "confidence": 0.756391704082489,
+      "probabilities": {
+        "approach": 0.054224446415901184,
+        "jump": 0.756391704082489,
+        "land": 0.04317871853709221,
+        "swing": 0.1462050825357437
+      }
+    },
+    {
+      "frame": 363,
+      "timestamp": 12.1,
+      "prediction": "jump",
+      "confidence": 0.7273809313774109,
+      "probabilities": {
+        "approach": 0.05534181371331215,
+        "jump": 0.7273809313774109,
+        "land": 0.04309486597776413,
+        "swing": 0.17418234050273895
+      }
+    },
+    {
+      "frame": 366,
+      "timestamp": 12.2,
+      "prediction": "jump",
+      "confidence": 0.7407647371292114,
+      "probabilities": {
+        "approach": 0.04457083344459534,
+        "jump": 0.7407647371292114,
+        "land": 0.03517245873808861,
+        "swing": 0.1794920563697815
+      }
+    },
+    {
+      "frame": 369,
+      "timestamp": 12.3,
+      "prediction": "jump",
+      "confidence": 0.7596291899681091,
+      "probabilities": {
+        "approach": 0.03664451837539673,
+        "jump": 0.7596291899681091,
+        "land": 0.029482895508408546,
+        "swing": 0.17424345016479492
+      }
+    },
+    {
+      "frame": 372,
+      "timestamp": 12.4,
+      "prediction": "jump",
+      "confidence": 0.7724876999855042,
+      "probabilities": {
+        "approach": 0.033416539430618286,
+        "jump": 0.7724876999855042,
+        "land": 0.027737287804484367,
+        "swing": 0.16635848581790924
+      }
+    },
+    {
+      "frame": 375,
+      "timestamp": 12.5,
+      "prediction": "jump",
+      "confidence": 0.7399784922599792,
+      "probabilities": {
+        "approach": 0.034151237457990646,
+        "jump": 0.7399784922599792,
+        "land": 0.027378467842936516,
+        "swing": 0.19849181175231934
+      }
+    },
+    {
+      "frame": 378,
+      "timestamp": 12.6,
+      "prediction": "jump",
+      "confidence": 0.7027928233146667,
+      "probabilities": {
+        "approach": 0.03958049789071083,
+        "jump": 0.7027928233146667,
+        "land": 0.030945658683776855,
+        "swing": 0.22668100893497467
+      }
+    },
+    {
+      "frame": 390,
+      "timestamp": 13.0,
+      "prediction": "jump",
+      "confidence": 0.7295295596122742,
+      "probabilities": {
+        "approach": 0.05975091829895973,
+        "jump": 0.7295295596122742,
+        "land": 0.06233641505241394,
+        "swing": 0.14838311076164246
+      }
+    },
+    {
+      "frame": 393,
+      "timestamp": 13.1,
+      "prediction": "jump",
+      "confidence": 0.7747188806533813,
+      "probabilities": {
+        "approach": 0.0422026589512825,
+        "jump": 0.7747188806533813,
+        "land": 0.04823842644691467,
+        "swing": 0.13484002649784088
+      }
+    },
+    {
+      "frame": 408,
+      "timestamp": 13.6,
+      "prediction": "jump",
+      "confidence": 0.847721517086029,
+      "probabilities": {
+        "approach": 0.029536454007029533,
+        "jump": 0.847721517086029,
+        "land": 0.030604097992181778,
+        "swing": 0.09213799983263016
+      }
+    },
+    {
+      "frame": 411,
+      "timestamp": 13.7,
+      "prediction": "jump",
+      "confidence": 0.9094445109367371,
+      "probabilities": {
+        "approach": 0.01346028596162796,
+        "jump": 0.9094445109367371,
+        "land": 0.014007365331053734,
+        "swing": 0.06308788806200027
+      }
+    },
+    {
+      "frame": 414,
+      "timestamp": 13.8,
+      "prediction": "jump",
+      "confidence": 0.9164816737174988,
+      "probabilities": {
+        "approach": 0.013827458024024963,
+        "jump": 0.9164816737174988,
+        "land": 0.013773654587566853,
+        "swing": 0.055917248129844666
+      }
+    },
+    {
+      "frame": 417,
+      "timestamp": 13.9,
+      "prediction": "jump",
+      "confidence": 0.9321543574333191,
+      "probabilities": {
+        "approach": 0.019141243770718575,
+        "jump": 0.9321543574333191,
+        "land": 0.021071525290608406,
+        "swing": 0.027632862329483032
+      }
+    },
+    {
+      "frame": 420,
+      "timestamp": 14.0,
+      "prediction": "jump",
+      "confidence": 0.9394404888153076,
+      "probabilities": {
+        "approach": 0.015550442971289158,
+        "jump": 0.9394404888153076,
+        "land": 0.01646166667342186,
+        "swing": 0.02854738011956215
+      }
+    },
+    {
+      "frame": 423,
+      "timestamp": 14.1,
+      "prediction": "jump",
+      "confidence": 0.8490296006202698,
+      "probabilities": {
+        "approach": 0.07036910206079483,
+        "jump": 0.8490296006202698,
+        "land": 0.03636372089385986,
+        "swing": 0.04423751309514046
+      }
+    },
+    {
+      "frame": 429,
+      "timestamp": 14.3,
+      "prediction": "approach",
+      "confidence": 0.7005183696746826,
+      "probabilities": {
+        "approach": 0.7005183696746826,
+        "jump": 0.16205868124961853,
+        "land": 0.09773565083742142,
+        "swing": 0.039687272161245346
+      }
+    },
+    {
+      "frame": 432,
+      "timestamp": 14.4,
+      "prediction": "approach",
+      "confidence": 0.8550793528556824,
+      "probabilities": {
+        "approach": 0.8550793528556824,
+        "jump": 0.05899926275014877,
+        "land": 0.06521311402320862,
+        "swing": 0.020708288997411728
+      }
+    },
+    {
+      "frame": 435,
+      "timestamp": 14.5,
+      "prediction": "approach",
+      "confidence": 0.972513735294342,
+      "probabilities": {
+        "approach": 0.972513735294342,
+        "jump": 0.005810424219816923,
+        "land": 0.0180341899394989,
+        "swing": 0.0036416505463421345
+      }
+    },
+    {
+      "frame": 438,
+      "timestamp": 14.6,
+      "prediction": "approach",
+      "confidence": 0.9881382584571838,
+      "probabilities": {
+        "approach": 0.9881382584571838,
+        "jump": 0.0015120086027309299,
+        "land": 0.008641735650599003,
+        "swing": 0.0017080247635021806
+      }
+    },
+    {
+      "frame": 441,
+      "timestamp": 14.7,
+      "prediction": "approach",
+      "confidence": 0.9900936484336853,
+      "probabilities": {
+        "approach": 0.9900936484336853,
+        "jump": 0.0012375650694593787,
+        "land": 0.007257619872689247,
+        "swing": 0.0014111947966739535
+      }
+    },
+    {
+      "frame": 444,
+      "timestamp": 14.8,
+      "prediction": "approach",
+      "confidence": 0.9920780062675476,
+      "probabilities": {
+        "approach": 0.9920780062675476,
+        "jump": 0.0009556086733937263,
+        "land": 0.005912902299314737,
+        "swing": 0.001053543179295957
+      }
+    },
+    {
+      "frame": 447,
+      "timestamp": 14.9,
+      "prediction": "approach",
+      "confidence": 0.9895714521408081,
+      "probabilities": {
+        "approach": 0.9895714521408081,
+        "jump": 0.0013879737816751003,
+        "land": 0.007348146289587021,
+        "swing": 0.0016924210358411074
+      }
+    },
+    {
+      "frame": 450,
+      "timestamp": 15.0,
+      "prediction": "approach",
+      "confidence": 0.9873427152633667,
+      "probabilities": {
+        "approach": 0.9873427152633667,
+        "jump": 0.0014944180147722363,
+        "land": 0.009059899486601353,
+        "swing": 0.002102879574522376
+      }
+    },
+    {
+      "frame": 459,
+      "timestamp": 15.3,
+      "prediction": "approach",
+      "confidence": 0.9873206615447998,
+      "probabilities": {
+        "approach": 0.9873206615447998,
+        "jump": 0.0016915792366489768,
+        "land": 0.008778589777648449,
+        "swing": 0.002209178637713194
+      }
+    },
+    {
+      "frame": 462,
+      "timestamp": 15.4,
+      "prediction": "approach",
+      "confidence": 0.9866281151771545,
+      "probabilities": {
+        "approach": 0.9866281151771545,
+        "jump": 0.0017730764811858535,
+        "land": 0.009273096919059753,
+        "swing": 0.00232571829110384
+      }
+    },
+    {
+      "frame": 465,
+      "timestamp": 15.5,
+      "prediction": "approach",
+      "confidence": 0.991033136844635,
+      "probabilities": {
+        "approach": 0.991033136844635,
+        "jump": 0.0010664195287972689,
+        "land": 0.006536310072988272,
+        "swing": 0.0013641469413414598
+      }
+    },
+    {
+      "frame": 468,
+      "timestamp": 15.6,
+      "prediction": "approach",
+      "confidence": 0.9897005558013916,
+      "probabilities": {
+        "approach": 0.9897005558013916,
+        "jump": 0.0013001980260014534,
+        "land": 0.0073821828700602055,
+        "swing": 0.0016170799499377608
+      }
+    },
+    {
+      "frame": 471,
+      "timestamp": 15.7,
+      "prediction": "approach",
+      "confidence": 0.9915075302124023,
+      "probabilities": {
+        "approach": 0.9915075302124023,
+        "jump": 0.0010720265563577414,
+        "land": 0.006143278442323208,
+        "swing": 0.0012771495385095477
+      }
+    },
+    {
+      "frame": 474,
+      "timestamp": 15.8,
+      "prediction": "approach",
+      "confidence": 0.993384063243866,
+      "probabilities": {
+        "approach": 0.993384063243866,
+        "jump": 0.0007131094462238252,
+        "land": 0.005013259593397379,
+        "swing": 0.000889509217813611
+      }
+    },
+    {
+      "frame": 477,
+      "timestamp": 15.9,
+      "prediction": "approach",
+      "confidence": 0.9932386875152588,
+      "probabilities": {
+        "approach": 0.9932386875152588,
+        "jump": 0.000686639454215765,
+        "land": 0.005176081787794828,
+        "swing": 0.0008986115572042763
+      }
+    },
+    {
+      "frame": 480,
+      "timestamp": 16.0,
+      "prediction": "approach",
+      "confidence": 0.9935471415519714,
+      "probabilities": {
+        "approach": 0.9935471415519714,
+        "jump": 0.0006400318234227598,
+        "land": 0.004971282556653023,
+        "swing": 0.0008415643242187798
+      }
+    },
+    {
+      "frame": 483,
+      "timestamp": 16.1,
+      "prediction": "approach",
+      "confidence": 0.9940018057823181,
+      "probabilities": {
+        "approach": 0.9940018057823181,
+        "jump": 0.0005940155242569745,
+        "land": 0.0046121650375425816,
+        "swing": 0.0007920328062027693
+      }
+    },
+    {
+      "frame": 486,
+      "timestamp": 16.2,
+      "prediction": "approach",
+      "confidence": 0.9943933486938477,
+      "probabilities": {
+        "approach": 0.9943933486938477,
+        "jump": 0.0005349123384803534,
+        "land": 0.004328649491071701,
+        "swing": 0.000743070908356458
+      }
+    },
+    {
+      "frame": 489,
+      "timestamp": 16.3,
+      "prediction": "approach",
+      "confidence": 0.9936360120773315,
+      "probabilities": {
+        "approach": 0.9936360120773315,
+        "jump": 0.0006470995722338557,
+        "land": 0.004824306350201368,
+        "swing": 0.0008926184964366257
+      }
+    },
+    {
+      "frame": 492,
+      "timestamp": 16.4,
+      "prediction": "approach",
+      "confidence": 0.9931507110595703,
+      "probabilities": {
+        "approach": 0.9931507110595703,
+        "jump": 0.0006968172383494675,
+        "land": 0.00516554107889533,
+        "swing": 0.0009868094930425286
+      }
+    },
+    {
+      "frame": 495,
+      "timestamp": 16.5,
+      "prediction": "approach",
+      "confidence": 0.9898680448532104,
+      "probabilities": {
+        "approach": 0.9898680448532104,
+        "jump": 0.0011277274461463094,
+        "land": 0.00731072761118412,
+        "swing": 0.0016934870509430766
+      }
+    },
+    {
+      "frame": 498,
+      "timestamp": 16.6,
+      "prediction": "approach",
+      "confidence": 0.97695392370224,
+      "probabilities": {
+        "approach": 0.97695392370224,
+        "jump": 0.002702275989577174,
+        "land": 0.0152082284912467,
+        "swing": 0.0051355608738958836
+      }
+    },
+    {
+      "frame": 501,
+      "timestamp": 16.7,
+      "prediction": "approach",
+      "confidence": 0.9391758441925049,
+      "probabilities": {
+        "approach": 0.9391758441925049,
+        "jump": 0.007823207415640354,
+        "land": 0.03806367516517639,
+        "swing": 0.014937256462872028
+      }
+    },
+    {
+      "frame": 504,
+      "timestamp": 16.8,
+      "prediction": "approach",
+      "confidence": 0.8218344449996948,
+      "probabilities": {
+        "approach": 0.8218344449996948,
+        "jump": 0.027855059131979942,
+        "land": 0.09709794819355011,
+        "swing": 0.053212616592645645
+      }
+    },
+    {
+      "frame": 510,
+      "timestamp": 17.0,
+      "prediction": "swing",
+      "confidence": 0.7180001735687256,
+      "probabilities": {
+        "approach": 0.04960545524954796,
+        "jump": 0.17682912945747375,
+        "land": 0.05556522682309151,
+        "swing": 0.7180001735687256
+      }
+    },
+    {
+      "frame": 534,
+      "timestamp": 17.8,
+      "prediction": "land",
+      "confidence": 0.7196685671806335,
+      "probabilities": {
+        "approach": 0.04709277302026749,
+        "jump": 0.16122190654277802,
+        "land": 0.7196685671806335,
+        "swing": 0.07201669365167618
+      }
+    },
+    {
+      "frame": 537,
+      "timestamp": 17.9,
+      "prediction": "land",
+      "confidence": 0.735129714012146,
+      "probabilities": {
+        "approach": 0.05053834989666939,
+        "jump": 0.1588257998228073,
+        "land": 0.735129714012146,
+        "swing": 0.05550610274076462
+      }
+    }
+  ]
+}

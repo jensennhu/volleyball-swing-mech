@@ -1,0 +1,1032 @@
+{
+  "model_path": "lstm_models/spike_phase_classifier.keras",
+  "pose_data_path": "frames_with_pose/pose_data.json",
+  "total_spikes": 20,
+  "total_phases": 77,
+  "predictions": [
+    {
+      "spike_id": 0,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9925211071968079,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9925211071968079,
+            "jump": 0.0007284338353201747,
+            "land": 0.00580322090536356,
+            "swing": 0.0009471239172853529
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9970587491989136,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00024145981296896935,
+            "jump": 0.9970587491989136,
+            "land": 0.001159250270575285,
+            "swing": 0.0015406670281663537
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9978429079055786,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00043069064849987626,
+            "jump": 0.0010295771062374115,
+            "land": 0.0006968623492866755,
+            "swing": 0.9978429079055786
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9971466660499573,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0019618303049355745,
+            "jump": 0.00042674934957176447,
+            "land": 0.9971466660499573,
+            "swing": 0.00046473005204461515
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 1,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9950674772262573,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9950674772262573,
+            "jump": 0.000439529016148299,
+            "land": 0.003920907154679298,
+            "swing": 0.0005720843328163028
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9968067407608032,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00026655482361093163,
+            "jump": 0.9968067407608032,
+            "land": 0.0012649833224713802,
+            "swing": 0.0016617540968582034
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9980329871177673,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00042015069629997015,
+            "jump": 0.0008762414217926562,
+            "land": 0.0006706066778860986,
+            "swing": 0.9980329871177673
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9979630708694458,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0013584927655756474,
+            "jump": 0.00032093757181428373,
+            "land": 0.9979630708694458,
+            "swing": 0.00035743610351346433
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 2,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9945579767227173,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9945579767227173,
+            "jump": 0.0004668686306104064,
+            "land": 0.00436818040907383,
+            "swing": 0.0006069799419492483
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9966830611228943,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00027272949228063226,
+            "jump": 0.9966830611228943,
+            "land": 0.001265408005565405,
+            "swing": 0.0017788318218663335
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9978871941566467,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0004495723987929523,
+            "jump": 0.0009397814865224063,
+            "land": 0.000723466684576124,
+            "swing": 0.9978871941566467
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9987865090370178,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0008484083227813244,
+            "jump": 0.00016742451407480985,
+            "land": 0.9987865090370178,
+            "swing": 0.00019763830641750246
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 3,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9064375162124634,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9064375162124634,
+            "jump": 0.033386312425136566,
+            "land": 0.047041211277246475,
+            "swing": 0.01313493400812149
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9963732361793518,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0003088040684815496,
+            "jump": 0.9963732361793518,
+            "land": 0.0014174835523590446,
+            "swing": 0.001900440314784646
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9975574016571045,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005217120633460581,
+            "jump": 0.0010852315463125706,
+            "land": 0.0008356843027286232,
+            "swing": 0.9975574016571045
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.998553454875946,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.001030891202390194,
+            "jump": 0.0002076302916975692,
+            "land": 0.998553454875946,
+            "swing": 0.00020790610869880766
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 4,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9952964186668396,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9952964186668396,
+            "jump": 0.00043867839849554,
+            "land": 0.003700729925185442,
+            "swing": 0.0005642312462441623
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9969450831413269,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0002473000786267221,
+            "jump": 0.9969450831413269,
+            "land": 0.0011497227242216468,
+            "swing": 0.0016578538343310356
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9976093769073486,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0004733454261440784,
+            "jump": 0.0011284628417342901,
+            "land": 0.0007888296968303621,
+            "swing": 0.9976093769073486
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9905233979225159,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.007287074811756611,
+            "jump": 0.001313873683102429,
+            "land": 0.9905233979225159,
+            "swing": 0.0008756218012422323
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 5,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9949120879173279,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9949120879173279,
+            "jump": 0.0004515823966357857,
+            "land": 0.004047072492539883,
+            "swing": 0.0005891997134312987
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9963744282722473,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00030838651582598686,
+            "jump": 0.9963744282722473,
+            "land": 0.0014483743580058217,
+            "swing": 0.00186880340334028
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9979493021965027,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00043301237747073174,
+            "jump": 0.0009134160354733467,
+            "land": 0.0007043242803774774,
+            "swing": 0.9979493021965027
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9977184534072876,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0015440958086401224,
+            "jump": 0.00035948719596490264,
+            "land": 0.9977184534072876,
+            "swing": 0.00037797263939864933
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 6,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.990279495716095,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.990279495716095,
+            "jump": 0.000653307419270277,
+            "land": 0.008274436928331852,
+            "swing": 0.0007928311824798584
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9966294169425964,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0002879624080378562,
+            "jump": 0.9966294169425964,
+            "land": 0.0013636117801070213,
+            "swing": 0.0017190150683745742
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9981277585029602,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0004049806739203632,
+            "jump": 0.0008338837651535869,
+            "land": 0.0006333277560770512,
+            "swing": 0.9981277585029602
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9986666440963745,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0008818952483125031,
+            "jump": 0.00019894371507689357,
+            "land": 0.9986666440963745,
+            "swing": 0.0002524525043554604
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 7,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9743123054504395,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9743123054504395,
+            "jump": 0.0032491774763911963,
+            "land": 0.019478878006339073,
+            "swing": 0.0029596062377095222
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9965764880180359,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.000286171241896227,
+            "jump": 0.9965764880180359,
+            "land": 0.001329271704889834,
+            "swing": 0.001807992928661406
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9975277781486511,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005593547830358148,
+            "jump": 0.0010589497396722436,
+            "land": 0.0008539246628060937,
+            "swing": 0.9975277781486511
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9980646967887878,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0013553129974752665,
+            "jump": 0.00028127996483817697,
+            "land": 0.9980646967887878,
+            "swing": 0.0002987073385156691
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 8,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9965423941612244,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9965423941612244,
+            "jump": 0.0002916627563536167,
+            "land": 0.002798275323584676,
+            "swing": 0.00036761187948286533
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9970065951347351,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00023582640278618783,
+            "jump": 0.9970065951347351,
+            "land": 0.0011569029884412885,
+            "swing": 0.0016007026424631476
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9979671835899353,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0004295788239687681,
+            "jump": 0.0009294082410633564,
+            "land": 0.0006738800439052284,
+            "swing": 0.9979671835899353
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9980827569961548,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0012909906217828393,
+            "jump": 0.0003010616055689752,
+            "land": 0.9980827569961548,
+            "swing": 0.00032515570637769997
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 9,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9955658316612244,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9955658316612244,
+            "jump": 0.00039741231012158096,
+            "land": 0.003530482528731227,
+            "swing": 0.000506193027831614
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9957849383354187,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00035867077531293035,
+            "jump": 0.9957849383354187,
+            "land": 0.0016139656072482467,
+            "swing": 0.0022424431517720222
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9980159997940063,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00043386640027165413,
+            "jump": 0.0008717572782188654,
+            "land": 0.0006784223369322717,
+            "swing": 0.9980159997940063
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9970357418060303,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0020577104296535254,
+            "jump": 0.0004158267402090132,
+            "land": 0.9970357418060303,
+            "swing": 0.0004907263210043311
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 10,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9924027919769287,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9924027919769287,
+            "jump": 0.0008044992573559284,
+            "land": 0.005958418361842632,
+            "swing": 0.0008342920918948948
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9969406127929688,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0002522407448850572,
+            "jump": 0.9969406127929688,
+            "land": 0.0012241452932357788,
+            "swing": 0.0015831392956897616
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.997268557548523,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0006248721037991345,
+            "jump": 0.0011278799502179027,
+            "land": 0.000978781026788056,
+            "swing": 0.997268557548523
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9987661838531494,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0008717563468962908,
+            "jump": 0.00017204151663463563,
+            "land": 0.9987661838531494,
+            "swing": 0.00019001771579496562
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 11,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9953100085258484,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9953100085258484,
+            "jump": 0.0004307350027374923,
+            "land": 0.0037306668236851692,
+            "swing": 0.0005285806837491691
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9949603080749512,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00044535307097248733,
+            "jump": 0.9949603080749512,
+            "land": 0.0018032568041235209,
+            "swing": 0.002791021717712283
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9983205199241638,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0010904019000008702,
+            "jump": 0.0002525631571188569,
+            "land": 0.9983205199241638,
+            "swing": 0.00033647860982455313
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 12,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9965946078300476,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9965946078300476,
+            "jump": 0.0002928383182734251,
+            "land": 0.0027449026238173246,
+            "swing": 0.00036767093115486205
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9928909540176392,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005942059215158224,
+            "jump": 0.9928909540176392,
+            "land": 0.002209009602665901,
+            "swing": 0.004305860958993435
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9968620538711548,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0006583418580703437,
+            "jump": 0.0015156716108322144,
+            "land": 0.0009639731724746525,
+            "swing": 0.9968620538711548
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.997755229473114,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0016003744676709175,
+            "jump": 0.00030216353479772806,
+            "land": 0.997755229473114,
+            "swing": 0.0003422444860916585
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 13,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9965772032737732,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9965772032737732,
+            "jump": 0.00028957208269275725,
+            "land": 0.0027747931890189648,
+            "swing": 0.00035845654201693833
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9953626394271851,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00039564911276102066,
+            "jump": 0.9953626394271851,
+            "land": 0.0016963552916422486,
+            "swing": 0.0025453725829720497
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9963088631629944,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005074721411801875,
+            "jump": 0.002378305187448859,
+            "land": 0.0008054196950979531,
+            "swing": 0.9963088631629944
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9982014894485474,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0012609719997271895,
+            "jump": 0.0002652443654369563,
+            "land": 0.9982014894485474,
+            "swing": 0.00027226877864450216
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 14,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.995663583278656,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.995663583278656,
+            "jump": 0.00035176039091311395,
+            "land": 0.003533679060637951,
+            "swing": 0.0004509414720814675
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9964512586593628,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00028402553289197385,
+            "jump": 0.9964512586593628,
+            "land": 0.001282281125895679,
+            "swing": 0.0019824104383587837
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9967303276062012,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00037695138598792255,
+            "jump": 0.0022933990694582462,
+            "land": 0.0005993759259581566,
+            "swing": 0.9967303276062012
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9985166192054749,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0010664345463737845,
+            "jump": 0.00021047389600425959,
+            "land": 0.9985166192054749,
+            "swing": 0.00020647856581490487
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 15,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9964025020599365,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9964025020599365,
+            "jump": 0.0002981001161970198,
+            "land": 0.0029289680533111095,
+            "swing": 0.0003704256087075919
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9957809448242188,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.00034900486934930086,
+            "jump": 0.9957809448242188,
+            "land": 0.0015045424224808812,
+            "swing": 0.002365468768402934
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9965734481811523,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0006327629089355469,
+            "jump": 0.0017521526897326112,
+            "land": 0.001041696174070239,
+            "swing": 0.9965734481811523
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 16,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.996191143989563,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.996191143989563,
+            "jump": 0.00029723785701207817,
+            "land": 0.003131355857476592,
+            "swing": 0.00038024390232749283
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9936102032661438,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005600715521723032,
+            "jump": 0.9936102032661438,
+            "land": 0.002160518430173397,
+            "swing": 0.0036692386493086815
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9971374273300171,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005787663394585252,
+            "jump": 0.0013511321740224957,
+            "land": 0.0009326612926088274,
+            "swing": 0.9971374273300171
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9977924823760986,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0016501402715221047,
+            "jump": 0.00027308438438922167,
+            "land": 0.9977924823760986,
+            "swing": 0.0002842459362000227
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 17,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9964010715484619,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9964010715484619,
+            "jump": 0.00029754784191027284,
+            "land": 0.002925103297457099,
+            "swing": 0.00037622611853294075
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9931648373603821,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0006544612697325647,
+            "jump": 0.9931648373603821,
+            "land": 0.0025144435930997133,
+            "swing": 0.0036662353668361902
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9978957176208496,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0015293604228645563,
+            "jump": 0.00032707725767977536,
+            "land": 0.9978957176208496,
+            "swing": 0.0002477779926266521
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 18,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9962080717086792,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9962080717086792,
+            "jump": 0.0003238993522245437,
+            "land": 0.0030663718935102224,
+            "swing": 0.00040167116094380617
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9969707727432251,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0002521442365832627,
+            "jump": 0.9969707727432251,
+            "land": 0.0012235654285177588,
+            "swing": 0.0015534445410594344
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9973989725112915,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0005618344293907285,
+            "jump": 0.0011425457196310163,
+            "land": 0.0008965972810983658,
+            "swing": 0.9973989725112915
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9982571005821228,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0011840206570923328,
+            "jump": 0.00025361028383485973,
+            "land": 0.9982571005821228,
+            "swing": 0.0003052828542422503
+          }
+        }
+      ]
+    },
+    {
+      "spike_id": 19,
+      "phases": [
+        {
+          "true_label": "approach",
+          "predicted_label": "approach",
+          "confidence": 0.9936635494232178,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.9936635494232178,
+            "jump": 0.0005916185327805579,
+            "land": 0.005014426074922085,
+            "swing": 0.0007303835009224713
+          }
+        },
+        {
+          "true_label": "jump",
+          "predicted_label": "jump",
+          "confidence": 0.9957834482192993,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0003583816869650036,
+            "jump": 0.9957834482192993,
+            "land": 0.001540449564345181,
+            "swing": 0.0023178118281066418
+          }
+        },
+        {
+          "true_label": "swing",
+          "predicted_label": "swing",
+          "confidence": 0.9958488941192627,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0007406453951261938,
+            "jump": 0.0022334661334753036,
+            "land": 0.0011769835837185383,
+            "swing": 0.9958488941192627
+          }
+        },
+        {
+          "true_label": "land",
+          "predicted_label": "land",
+          "confidence": 0.9984739422798157,
+          "correct": true,
+          "all_probabilities": {
+            "approach": 0.0010053003206849098,
+            "jump": 0.00022996468760538846,
+            "land": 0.9984739422798157,
+            "swing": 0.00029075611382722855
+          }
+        }
+      ]
+    }
+  ]
+}

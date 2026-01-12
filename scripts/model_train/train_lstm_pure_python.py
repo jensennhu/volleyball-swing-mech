@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Pure Python LSTM Training Script
+Spike-Aware LSTM Training Script
 =================================
 
-Train LSTM model entirely in Python without command line arguments.
-Just run: python train_lstm_pure_python.py
+Train LSTM model on complete volleyball spike sequences.
+Each training example is a complete spike (approach→jump→swing→land).
+
+Usage: python train_lstm_spike_aware.py
 """
 
 import numpy as np
@@ -13,7 +15,7 @@ import os
 from typing import Dict, List, Tuple, Optional
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 import warnings
 warnings.filterwarnings('ignore')
@@ -25,569 +27,492 @@ try:
     from tensorflow.keras import layers, models, callbacks
     print(f"✅ TensorFlow version: {tf.__version__}")
 except ImportError:
-    print("❌ Error: TensorFlow not installed. Run: pip install tensorflow --break-system-packages")
+    print("❌ Error: TensorFlow not installed")
+    print("   If you need LSTM training, install with:")
+    print("   pip install scipy==1.13.1 ml_dtypes==0.4.0 jax==0.4.23 jaxlib==0.4.23 tensorflow==2.15.0 --break-system-packages")
     exit(1)
 
 
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-POSE_DATA_PATH = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/frames_with_pose/pose_data.json"  # Path to pose data JSON
-POSE_TYPE = "auto"                  # "auto", "mediapipe", or "yolo"
-OUTPUT_DIR = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/output_lstm"          # Where to save trained models
-MODEL_NAME = "spike_lstm"           # Model name prefix
+POSE_DATA_PATH = "frames_with_pose/pose_data_normalized.json"  # Path to pose data JSON
+SPIKE_METADATA_PATH = "downsampled_sequences/spike_sequences_metadata.json"  # Spike metadata
+POSE_TYPE = "auto"                      # "auto", "mediapipe", or "yolo"
+OUTPUT_DIR = "lstm_models"              # Where to save trained models
+MODEL_NAME = "spike_phase_classifier_normalized_3layers"   # Model name prefix
 
-# Sequence parameters
-SEQUENCE_LENGTH = 13                # Number of frames per sequence
-STRIDE = 1                          # Step between sequences (lower = more overlap)
+# Training mode
+TRAINING_MODE = "phase"                 # "phase" or "spike"
+                                        # "phase": Classify individual phases (approach/jump/swing/land)
+                                        # "spike": Classify complete spikes (not implemented yet)
+
+# Spike filtering
+USE_ONLY_COMPLETE_SPIKES = True         # Only train on complete spikes
+FRAMES_PER_PHASE = 10                   # Expected frames per phase
 
 # Train/test split
-TEST_SIZE = 0.2                     # 20% for testing
-VAL_SIZE = 0.2                      # 20% for validation (from remaining data)
+TEST_SIZE = 0.2                         # 20% for testing
+VAL_SIZE = 0.2                          # 20% for validation (from remaining data)
 
 # Model architecture
-LSTM_UNITS = [64, 32]              # LSTM layer sizes
-DROPOUT = 0.3                       # Dropout rate for regularization
+LSTM_UNITS = [128, 64, 32]                  # LSTM layer sizes
+DROPOUT = 0.3                           # Dropout rate for regularization
 
 # Training parameters
-EPOCHS = 50                         # Number of training epochs
-BATCH_SIZE = 32                     # Batch size
-LEARNING_RATE = 0.001              # Learning rate
+EPOCHS = 100                             # Number of training epochs
+BATCH_SIZE = 8                         # Batch size (smaller for fewer samples)
+LEARNING_RATE = 0.001                   # Learning rate
 
 # Display settings
-SHOW_PLOTS = True                   # Set to False to skip showing plots
-VERBOSE = 1                         # 0=silent, 1=progress bar, 2=one line per epoch
+SHOW_PLOTS = True                       # Set to False to skip showing plots
+VERBOSE = 1                             # 0=silent, 1=progress bar, 2=one line per epoch
 # ============================================================================
 
 
-class PoseDataProcessor:
-    """Process pose data from MediaPipe or YOLO into LSTM-ready sequences."""
+def load_spike_sequences(pose_data_path: str, 
+                        spike_metadata_path: str,
+                        frames_per_phase: int = 10,
+                        only_complete: bool = True) -> Tuple[List[Dict], Dict]:
+    """
+    Load pose data organized by spike sequences.
     
-    def __init__(self, pose_type: str = 'auto'):
-        self.pose_type = pose_type
-        self.scaler = StandardScaler()
-        self.label_encoder = LabelEncoder()
-        
-    def detect_pose_format(self, pose_data: Dict) -> str:
-        """Detect if data is from MediaPipe or YOLO."""
-        if not pose_data or len(pose_data) == 0:
-            raise ValueError("Empty pose data")
-        
-        first_entry = pose_data[0]
-        
-        # Check for YOLO format
-        if 'keypoints' in first_entry and isinstance(first_entry['keypoints'], dict):
-            first_kpt = next(iter(first_entry['keypoints'].values()))
-            if isinstance(first_kpt, dict) and 'confidence' in first_kpt:
-                return 'yolo'
-        
-        # Check for MediaPipe format
-        if 'landmarks' in first_entry:
-            return 'mediapipe'
-        
-        raise ValueError("Unknown pose data format")
+    Returns:
+        - List of phase sequences (each is a dict with pose features and label)
+        - Spike metadata
+    """
+    print("\n📂 Loading spike sequence data...")
     
-    def extract_features_mediapipe(self, pose_entry: Dict) -> Optional[np.ndarray]:
-        """Extract feature vector from MediaPipe pose data."""
-        if not pose_entry.get('pose_detected', False):
-            return None
+    # Check if files exist
+    if not os.path.exists(pose_data_path):
+        raise FileNotFoundError(f"Pose data file not found: {pose_data_path}")
+    
+    if not os.path.exists(spike_metadata_path):
+        raise FileNotFoundError(f"Spike metadata file not found: {spike_metadata_path}")
+    
+    # Load pose data
+    with open(pose_data_path, 'r') as f:
+        pose_json = json.load(f)
+    
+    # Handle different pose data formats
+    if 'pose_data' in pose_json:
+        pose_data_list = pose_json['pose_data']
+    elif isinstance(pose_json, list):
+        pose_data_list = pose_json
+    else:
+        raise ValueError(f"Unexpected pose data format. Expected 'pose_data' key or list, got: {type(pose_json)}")
+    
+    if not pose_data_list:
+        raise ValueError("Pose data is empty!")
+    
+    print(f"   Loaded {len(pose_data_list)} pose entries")
+    
+    # Create frame number lookup
+    pose_by_frame = {}
+    for entry in pose_data_list:
+        if 'frame_number' in entry:
+            pose_by_frame[entry['frame_number']] = entry
+        else:
+            print(f"   ⚠️  Warning: Pose entry missing frame_number: {entry.keys()}")
+    
+    print(f"   Created lookup for {len(pose_by_frame)} frames")
+    
+    # Load spike metadata
+    with open(spike_metadata_path, 'r') as f:
+        spike_metadata = json.load(f)
+    
+    # Validate spike metadata structure
+    if 'spike_sequences' not in spike_metadata:
+        raise ValueError(f"Spike metadata missing 'spike_sequences' key. Keys found: {spike_metadata.keys()}")
+    
+    spike_sequences_list = spike_metadata['spike_sequences']
+    
+    if not spike_sequences_list:
+        raise ValueError("No spike sequences found in metadata!")
+    
+    print(f"   Total spikes: {spike_metadata.get('total_spikes', len(spike_sequences_list))}")
+    print(f"   Complete spikes: {spike_metadata.get('complete_spikes', 'unknown')}")
+    
+    # Extract phase sequences
+    phase_sequences = []
+    
+    for spike in spike_sequences_list:
+        if only_complete and not spike.get('complete', True):
+            if VERBOSE:
+                print(f"   ⚠️  Skipping incomplete spike {spike.get('spike_id', '?')}")
+            continue
         
+        spike_id = spike.get('spike_id', 0)
+        phases = spike.get('phases', [])
+        
+        if not phases:
+            print(f"   ⚠️  Warning: Spike {spike_id} has no phases")
+            continue
+        
+        for phase in phases:
+            label = phase.get('label', 'unknown')
+            frame_numbers = phase.get('selected_frame_numbers', [])
+            
+            if not frame_numbers:
+                print(f"   ⚠️  Warning: Spike {spike_id} phase '{label}' has no frame numbers")
+                continue
+            
+            # Get pose data for all frames in this phase
+            phase_poses = []
+            missing_frames = []
+            
+            for frame_num in frame_numbers:
+                if frame_num in pose_by_frame:
+                    pose_entry = pose_by_frame[frame_num]
+                    if pose_entry.get('pose_detected', False):
+                        phase_poses.append(pose_entry)
+                    else:
+                        missing_frames.append(f"{frame_num}(no pose)")
+                else:
+                    missing_frames.append(f"{frame_num}(missing)")
+            
+            # Only add if we have the expected number of frames
+            if len(phase_poses) == frames_per_phase:
+                phase_sequences.append({
+                    'spike_id': spike_id,
+                    'label': label,
+                    'poses': phase_poses,
+                    'frame_numbers': frame_numbers
+                })
+            else:
+                print(f"   ⚠️  Skipping spike {spike_id} phase '{label}': "
+                      f"expected {frames_per_phase} frames, got {len(phase_poses)}")
+                if missing_frames:
+                    print(f"       Missing/bad frames: {', '.join(missing_frames[:5])}"
+                          f"{' ...' if len(missing_frames) > 5 else ''}")
+    
+    print(f"\n✅ Loaded {len(phase_sequences)} phase sequences")
+    
+    # Count by label
+    label_counts = {}
+    for seq in phase_sequences:
+        label = seq['label']
+        label_counts[label] = label_counts.get(label, 0) + 1
+    
+    print(f"   Distribution:")
+    for label, count in sorted(label_counts.items()):
+        print(f"     {label}: {count} sequences")
+    
+    return phase_sequences, spike_metadata
+
+
+def extract_features_from_pose(pose_entry: Dict, pose_type: str = 'mediapipe') -> Optional[np.ndarray]:
+    """Extract feature vector from pose data."""
+    
+    if pose_type == 'mediapipe':
         landmarks = pose_entry.get('landmarks', {})
         angles = pose_entry.get('angles', {})
         
         features = []
         
         # Joint angles (8 features)
-        for key in ['right_shoulder', 'right_elbow', 'right_hip', 'right_knee',
-                    'left_shoulder', 'left_elbow', 'left_hip', 'left_knee']:
+        angle_keys = ['right_shoulder', 'right_elbow', 'right_hip', 'right_knee',
+                     'left_shoulder', 'left_elbow', 'left_hip', 'left_knee']
+        for key in angle_keys:
             features.append(angles.get(key, 0.0))
         
-        # Landmark positions (24 features - x,y for 12 keypoints)
-        for key in ['right_shoulder', 'right_elbow', 'right_wrist', 
-                    'right_hip', 'right_knee', 'right_ankle',
-                    'left_shoulder', 'left_elbow', 'left_wrist',
-                    'left_hip', 'left_knee', 'left_ankle']:
-            coords = landmarks.get(key, [0, 0])
-            features.extend(coords)
+        # Landmark positions (24 features: x,y for 12 keypoints)
+        landmark_keys = ['right_shoulder', 'right_elbow', 'right_wrist', 
+                        'right_hip', 'right_knee', 'right_ankle',
+                        'left_shoulder', 'left_elbow', 'left_wrist',
+                        'left_hip', 'left_knee', 'left_ankle']
+        for key in landmark_keys:
+            if key in landmarks:
+                coords = landmarks[key]
+                features.extend([coords[0], coords[1]])
+            else:
+                features.extend([0.0, 0.0])
         
         # Confidence (1 feature)
         features.append(pose_entry.get('confidence', 0.0))
         
         return np.array(features, dtype=np.float32)
     
-    def extract_features_yolo(self, pose_entry: Dict) -> Optional[np.ndarray]:
-        """Extract feature vector from YOLO pose data."""
-        if not pose_entry.get('pose_detected', False):
-            return None
-        
+    elif pose_type == 'yolo':
         keypoints = pose_entry.get('keypoints', {})
         angles = pose_entry.get('angles', {})
         
         features = []
         
         # Joint angles (8 features)
-        for key in ['right_shoulder', 'right_elbow', 'right_hip', 'right_knee',
-                    'left_shoulder', 'left_elbow', 'left_hip', 'left_knee']:
+        angle_keys = ['right_shoulder', 'right_elbow', 'right_hip', 'right_knee',
+                     'left_shoulder', 'left_elbow', 'left_hip', 'left_knee']
+        for key in angle_keys:
             features.append(angles.get(key, 0.0))
         
-        # Keypoint positions and confidences (36 features - x,y,conf for 12 keypoints)
-        for key in ['right_shoulder', 'right_elbow', 'right_wrist', 
-                    'right_hip', 'right_knee', 'right_ankle',
-                    'left_shoulder', 'left_elbow', 'left_wrist',
-                    'left_hip', 'left_knee', 'left_ankle']:
-            kpt = keypoints.get(key)
-            if kpt:
+        # YOLO has 17 keypoints, use subset for consistency
+        kpt_keys = ['right_shoulder', 'right_elbow', 'right_wrist',
+                   'right_hip', 'right_knee', 'right_ankle',
+                   'left_shoulder', 'left_elbow', 'left_wrist',
+                   'left_hip', 'left_knee', 'left_ankle']
+        
+        for key in kpt_keys:
+            if key in keypoints:
+                kpt = keypoints[key]
                 features.extend([kpt['x'], kpt['y'], kpt['confidence']])
             else:
                 features.extend([0.0, 0.0, 0.0])
         
-        # Overall confidence (1 feature)
-        features.append(pose_entry.get('confidence', 0.0))
+        # Overall confidence
+        avg_conf = np.mean([kpt.get('confidence', 0) for kpt in keypoints.values()])
+        features.append(avg_conf)
         
         return np.array(features, dtype=np.float32)
     
-    def load_pose_data(self, json_path: str) -> Tuple[np.ndarray, np.ndarray, List[str]]:
-        """Load pose data from JSON file and convert to sequences."""
-        print(f"📂 Loading pose data from: {json_path}")
-        
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-        
-        pose_data = data['pose_data']
-        
-        # Auto-detect format if needed
-        if self.pose_type == 'auto':
-            self.pose_type = self.detect_pose_format(pose_data)
-            print(f"🔍 Detected pose format: {self.pose_type.upper()}")
-        
-        # Extract features
-        print(f"🔄 Extracting features from {len(pose_data)} frames...")
-        
-        feature_extractor = (self.extract_features_mediapipe 
-                           if self.pose_type == 'mediapipe' 
-                           else self.extract_features_yolo)
-        
-        all_features = []
-        all_labels = []
-        
-        for entry in pose_data:
-            features = feature_extractor(entry)
+    return None
+
+
+def prepare_phase_sequences(phase_sequences: List[Dict], 
+                           pose_type: str = 'mediapipe') -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Prepare sequences for LSTM training.
+    
+    Each sequence is all frames from one phase (e.g., 10 approach frames).
+    
+    Returns:
+        X: (n_sequences, frames_per_phase, n_features)
+        y: (n_sequences,) - phase labels
+        labels: List of unique labels
+    """
+    print("\n🔧 Preparing sequences for LSTM...")
+    
+    X_list = []
+    y_list = []
+    
+    for seq in phase_sequences:
+        # Extract features for all poses in this phase
+        phase_features = []
+        for pose in seq['poses']:
+            features = extract_features_from_pose(pose, pose_type)
             if features is not None:
-                all_features.append(features)
-                # Use first label if multiple labels exist
-                labels = entry.get('labels', ['unknown'])
-                all_labels.append(labels[0])
+                phase_features.append(features)
         
-        print(f"✅ Extracted {len(all_features)} valid pose frames")
-        print(f"📊 Labels found: {set(all_labels)}")
-        
-        # Convert to numpy arrays
-        X = np.array(all_features, dtype=np.float32)
-        y = np.array(all_labels)
-        
-        # Get unique labels
-        unique_labels = sorted(set(all_labels))
-        
-        return X, y, unique_labels
+        if len(phase_features) > 0:
+            X_list.append(np.array(phase_features))
+            y_list.append(seq['label'])
     
-    def create_sequences(self, X: np.ndarray, y: np.ndarray, 
-                        sequence_length: int = 10,
-                        stride: int = 1) -> Tuple[np.ndarray, np.ndarray]:
-        """Create overlapping sequences for LSTM input."""
-        print(f"\n🔄 Creating sequences (length={sequence_length}, stride={stride})...")
-        
-        sequences = []
-        labels = []
-        
-        for i in range(0, len(X) - sequence_length + 1, stride):
-            sequence = X[i:i + sequence_length]
-            # Use the label from the middle of the sequence
-            label = y[i + sequence_length // 2]
-            
-            sequences.append(sequence)
-            labels.append(label)
-        
-        X_seq = np.array(sequences, dtype=np.float32)
-        y_seq = np.array(labels)
-        
-        print(f"✅ Created {len(sequences)} sequences")
-        print(f"   Sequence shape: {X_seq.shape}")
-        
-        return X_seq, y_seq
+    X = np.array(X_list, dtype=np.float32)
+    
+    # Encode labels
+    unique_labels = sorted(list(set(y_list)))
+    label_to_int = {label: i for i, label in enumerate(unique_labels)}
+    y = np.array([label_to_int[label] for label in y_list])
+    
+    print(f"✅ Prepared {len(X)} sequences")
+    print(f"   Sequence shape: {X.shape}")
+    print(f"   Labels: {unique_labels}")
+    
+    return X, y, unique_labels
 
 
-class VolleyballSpikeLSTM:
-    """LSTM model for volleyball spike phase classification."""
+def build_phase_classifier(input_shape: Tuple[int, int], 
+                          num_classes: int,
+                          lstm_units: List[int] = [64, 32],
+                          dropout: float = 0.3) -> keras.Model:
+    """Build LSTM model for phase classification."""
     
-    def __init__(self, input_shape: Tuple[int, int], num_classes: int, 
-                 lstm_units: List[int] = [64, 32],
-                 dropout: float = 0.3):
-        self.input_shape = input_shape
-        self.num_classes = num_classes
-        self.lstm_units = lstm_units
-        self.dropout = dropout
-        self.model = None
-        self.history = None
-        
-    def build_model(self) -> keras.Model:
-        """Build the LSTM architecture."""
-        print(f"\n🏗️  Building LSTM model...")
-        print(f"   Input shape: {self.input_shape}")
-        print(f"   Output classes: {self.num_classes}")
-        print(f"   LSTM units: {self.lstm_units}")
-        
-        model = models.Sequential(name='VolleyballSpikeLSTM')
-        
-        # First LSTM layer
+    print(f"\n🏗️  Building phase classifier...")
+    print(f"   Input shape: {input_shape}")
+    print(f"   Output classes: {num_classes}")
+    
+    model = models.Sequential(name='SpikePhaseClassifier')
+    
+    # First LSTM layer (needs input_shape)
+    model.add(layers.LSTM(
+        lstm_units[0],
+        return_sequences=len(lstm_units) > 1,
+        input_shape=input_shape,
+        name='lstm_1'
+    ))
+    model.add(layers.Dropout(dropout, name='dropout_1'))
+    
+    # Additional LSTM layers (don't need input_shape)
+    for i, units in enumerate(lstm_units[1:], start=2):
+        return_seq = i < len(lstm_units)
         model.add(layers.LSTM(
-            self.lstm_units[0],
-            return_sequences=len(self.lstm_units) > 1,
-            input_shape=self.input_shape,
-            name='lstm_1'
+            units,
+            return_sequences=return_seq,
+            name=f'lstm_{i}'
         ))
-        model.add(layers.Dropout(self.dropout, name='dropout_1'))
-        
-        # Additional LSTM layers
-        for i, units in enumerate(self.lstm_units[1:], start=2):
-            return_seq = i < len(self.lstm_units)
-            model.add(layers.LSTM(
-                units,
-                return_sequences=return_seq,
-                name=f'lstm_{i}'
-            ))
-            model.add(layers.Dropout(self.dropout, name=f'dropout_{i}'))
-        
-        # Dense layers
-        model.add(layers.Dense(32, activation='relu', name='dense_1'))
-        model.add(layers.Dropout(self.dropout / 2, name='dropout_dense'))
-        
-        # Output layer
-        if self.num_classes == 2:
-            model.add(layers.Dense(1, activation='sigmoid', name='output'))
-        else:
-            model.add(layers.Dense(self.num_classes, activation='softmax', name='output'))
-        
-        self.model = model
-        
-        print("\n📋 Model Architecture:")
-        model.summary()
-        
-        return model
+        model.add(layers.Dropout(dropout, name=f'dropout_{i}'))
     
-    def compile_model(self, learning_rate: float = 0.001):
-        """Compile the model."""
-        if self.model is None:
-            self.build_model()
-        
-        if self.num_classes == 2:
-            loss = 'binary_crossentropy'
-            metrics = ['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
-        else:
-            loss = 'sparse_categorical_crossentropy'
-            metrics = ['accuracy']
-        
-        self.model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-            loss=loss,
-            metrics=metrics
-        )
-        
-        print(f"\n⚙️  Model compiled with learning_rate={learning_rate}")
+    # Dense layers
+    model.add(layers.Dense(32, activation='relu', name='dense'))
+    model.add(layers.Dropout(dropout / 2, name='dropout_dense'))
     
-    def train(self, X_train: np.ndarray, y_train: np.ndarray,
-              X_val: np.ndarray, y_val: np.ndarray,
-              epochs: int = 50,
-              batch_size: int = 32,
-              verbose: int = 1) -> keras.callbacks.History:
-        """Train the LSTM model."""
-        print(f"\n🎓 Training model...")
-        print(f"   Training samples: {len(X_train)}")
-        print(f"   Validation samples: {len(X_val)}")
-        print(f"   Epochs: {epochs}")
-        print(f"   Batch size: {batch_size}")
-        
-        # Callbacks
-        early_stop = callbacks.EarlyStopping(
-            monitor='val_loss',
-            patience=10,
-            restore_best_weights=True,
-            verbose=1
-        )
-        
-        reduce_lr = callbacks.ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,
-            patience=5,
-            min_lr=1e-6,
-            verbose=1
-        )
-        
-        # Train
-        self.history = self.model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=epochs,
-            batch_size=batch_size,
-            callbacks=[early_stop, reduce_lr],
-            verbose=verbose
-        )
-        
-        print("\n✅ Training complete!")
-        
-        return self.history
+    # Output layer
+    model.add(layers.Dense(num_classes, activation='softmax', name='output'))
     
-    def evaluate(self, X_test: np.ndarray, y_test: np.ndarray,
-                label_names: List[str]) -> Dict:
-        """Evaluate model on test set."""
-        print(f"\n📊 Evaluating model on {len(X_test)} test samples...")
-        
-        # Get predictions
-        if self.num_classes == 2:
-            y_pred_proba = self.model.predict(X_test, verbose=0)
-            y_pred = (y_pred_proba > 0.5).astype(int).flatten()
-        else:
-            y_pred_proba = self.model.predict(X_test, verbose=0)
-            y_pred = np.argmax(y_pred_proba, axis=1)
-        
-        # Compute metrics
-        test_loss, test_acc = self.model.evaluate(X_test, y_test, verbose=0)[:2]
-        
-        # Classification report
-        print("\n" + "="*60)
-        print("CLASSIFICATION REPORT")
-        print("="*60)
-        print(classification_report(y_test, y_pred, target_names=label_names))
-        
-        # Confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
-        print("\n" + "="*60)
-        print("CONFUSION MATRIX")
-        print("="*60)
-        print(cm)
-        print()
-        
-        results = {
-            'test_loss': test_loss,
-            'test_accuracy': test_acc,
-            'predictions': y_pred,
-            'probabilities': y_pred_proba,
-            'confusion_matrix': cm
-        }
-        
-        return results
+    print("\n📋 Model Architecture:")
+    model.summary()
     
-    def plot_training_history(self, save_path: Optional[str] = None, show: bool = True):
-        """Plot training history."""
-        if self.history is None:
-            print("No training history available")
-            return
-        
-        fig, axes = plt.subplots(1, 2, figsize=(15, 5))
-        
-        # Accuracy
-        axes[0].plot(self.history.history['accuracy'], label='Train Accuracy', linewidth=2)
-        axes[0].plot(self.history.history['val_accuracy'], label='Val Accuracy', linewidth=2)
-        axes[0].set_xlabel('Epoch', fontsize=12)
-        axes[0].set_ylabel('Accuracy', fontsize=12)
-        axes[0].set_title('Model Accuracy', fontsize=14, fontweight='bold')
-        axes[0].legend(fontsize=10)
-        axes[0].grid(True, alpha=0.3)
-        
-        # Loss
-        axes[1].plot(self.history.history['loss'], label='Train Loss', linewidth=2)
-        axes[1].plot(self.history.history['val_loss'], label='Val Loss', linewidth=2)
-        axes[1].set_xlabel('Epoch', fontsize=12)
-        axes[1].set_ylabel('Loss', fontsize=12)
-        axes[1].set_title('Model Loss', fontsize=14, fontweight='bold')
-        axes[1].legend(fontsize=10)
-        axes[1].grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"📊 Training plot saved to: {save_path}")
-        
-        if show:
-            plt.show()
-        else:
-            plt.close()
-    
-    def plot_confusion_matrix(self, cm: np.ndarray, label_names: List[str],
-                             save_path: Optional[str] = None, show: bool = True):
-        """Plot confusion matrix."""
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        im = ax.imshow(cm, cmap='Blues')
-        
-        # Labels
-        ax.set_xticks(np.arange(len(label_names)))
-        ax.set_yticks(np.arange(len(label_names)))
-        ax.set_xticklabels(label_names)
-        ax.set_yticklabels(label_names)
-        
-        # Rotate x labels
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-        
-        # Add text annotations
-        for i in range(len(label_names)):
-            for j in range(len(label_names)):
-                text = ax.text(j, i, cm[i, j],
-                             ha="center", va="center", 
-                             color="black" if cm[i, j] < cm.max() / 2 else "white",
-                             fontsize=14, fontweight='bold')
-        
-        ax.set_title("Confusion Matrix", fontsize=16, fontweight='bold', pad=20)
-        ax.set_ylabel('True Label', fontsize=12)
-        ax.set_xlabel('Predicted Label', fontsize=12)
-        
-        fig.colorbar(im, ax=ax)
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"📊 Confusion matrix saved to: {save_path}")
-        
-        if show:
-            plt.show()
-        else:
-            plt.close()
-    
-    def save_model(self, filepath: str):
-        """Save model to file."""
-        self.model.save(filepath)
-        print(f"💾 Model saved to: {filepath}")
+    return model
 
 
 def main():
     """Main training function."""
     
-    print("=" * 60)
-    print("🏐 VOLLEYBALL SPIKE LSTM CLASSIFIER")
-    print("=" * 60)
-    print(f"\nConfiguration:")
-    print(f"  Pose data: {POSE_DATA_PATH}")
-    print(f"  Sequence length: {SEQUENCE_LENGTH}")
-    print(f"  LSTM units: {LSTM_UNITS}")
-    print(f"  Epochs: {EPOCHS}")
-    print(f"  Output: {OUTPUT_DIR}/")
-    print()
+    print("=" * 70)
+    print("🏐 SPIKE-AWARE LSTM TRAINING")
+    print("=" * 70)
     
-    # Check if file exists
-    if not os.path.exists(POSE_DATA_PATH):
-        print(f"❌ ERROR: Pose data file not found: {POSE_DATA_PATH}")
-        print("\nPlease ensure you have run pose detection first!")
+    # Load spike sequences
+    phase_sequences, spike_metadata = load_spike_sequences(
+        POSE_DATA_PATH,
+        SPIKE_METADATA_PATH,
+        FRAMES_PER_PHASE,
+        USE_ONLY_COMPLETE_SPIKES
+    )
+    
+    if len(phase_sequences) < 10:
+        print(f"\n❌ Error: Not enough sequences for training (found {len(phase_sequences)})")
+        print("   Need at least 10 sequences. Check your data!")
         return
     
-    # Create output directory
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    # Detect pose type
+    first_pose = phase_sequences[0]['poses'][0]
+    pose_type = 'yolo' if 'keypoints' in first_pose else 'mediapipe'
+    print(f"\n🔍 Detected pose type: {pose_type}")
     
-    # Load and process data
-    processor = PoseDataProcessor(pose_type=POSE_TYPE)
-    X, y, label_names = processor.load_pose_data(POSE_DATA_PATH)
-    
-    # Create sequences
-    X_seq, y_seq = processor.create_sequences(X, y, SEQUENCE_LENGTH, STRIDE)
+    # Prepare sequences
+    X, y, label_names = prepare_phase_sequences(phase_sequences, pose_type)
     
     # Normalize features
-    print("\n🔄 Normalizing features...")
-    n_samples, seq_len, n_features = X_seq.shape
-    X_seq_flat = X_seq.reshape(-1, n_features)
-    X_seq_normalized = processor.scaler.fit_transform(X_seq_flat)
-    X_seq = X_seq_normalized.reshape(n_samples, seq_len, n_features)
-    
-    # Encode labels
-    print("🔄 Encoding labels...")
-    y_encoded = processor.label_encoder.fit_transform(y_seq)
-    
-    print(f"\n📊 Dataset Statistics:")
-    print(f"   Total sequences: {len(X_seq)}")
-    print(f"   Sequence shape: {X_seq.shape}")
-    print(f"   Number of classes: {len(label_names)}")
-    print(f"   Classes: {label_names}")
-    print(f"   Class distribution: {dict(zip(*np.unique(y_seq, return_counts=True)))}")
+    print("\n📊 Normalizing features...")
+    scaler = StandardScaler()
+    n_sequences, n_frames, n_features = X.shape
+    X_reshaped = X.reshape(-1, n_features)
+    X_normalized = scaler.fit_transform(X_reshaped)
+    X = X_normalized.reshape(n_sequences, n_frames, n_features)
     
     # Split data
-    print(f"\n✂️  Splitting data (test={TEST_SIZE}, val={VAL_SIZE})...")
-    
-    # First split: train+val vs test
+    print(f"\n✂️  Splitting data...")
     X_temp, X_test, y_temp, y_test = train_test_split(
-        X_seq, y_encoded, test_size=TEST_SIZE, random_state=42, stratify=y_encoded
+        X, y, test_size=TEST_SIZE, random_state=42, stratify=y
     )
     
-    # Second split: train vs val
-    val_proportion = VAL_SIZE / (1 - TEST_SIZE)
     X_train, X_val, y_train, y_val = train_test_split(
-        X_temp, y_temp, test_size=val_proportion, random_state=42, stratify=y_temp
+        X_temp, y_temp, test_size=VAL_SIZE, random_state=42, stratify=y_temp
     )
     
-    print(f"   Train: {len(X_train)} samples")
-    print(f"   Val: {len(X_val)} samples")
-    print(f"   Test: {len(X_test)} samples")
+    print(f"   Train: {len(X_train)} sequences")
+    print(f"   Val:   {len(X_val)} sequences")
+    print(f"   Test:  {len(X_test)} sequences")
     
-    # Build and train model
-    lstm_model = VolleyballSpikeLSTM(
-        input_shape=(seq_len, n_features),
+    # Build model
+    model = build_phase_classifier(
+        input_shape=(n_frames, n_features),
         num_classes=len(label_names),
         lstm_units=LSTM_UNITS,
         dropout=DROPOUT
     )
     
-    lstm_model.compile_model(learning_rate=LEARNING_RATE)
+    # Compile
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy']
+    )
     
-    history = lstm_model.train(
+    # Callbacks
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    early_stop = callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=10,
+        restore_best_weights=True,
+        verbose=1
+    )
+    
+    reduce_lr = callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.5,
+        patience=5,
+        verbose=1
+    )
+    
+    # Train
+    print(f"\n🎓 Training model...")
+    history = model.fit(
         X_train, y_train,
-        X_val, y_val,
+        validation_data=(X_val, y_val),
         epochs=EPOCHS,
         batch_size=BATCH_SIZE,
+        callbacks=[early_stop, reduce_lr],
         verbose=VERBOSE
     )
     
     # Evaluate
-    results = lstm_model.evaluate(X_test, y_test, label_names)
+    print(f"\n📊 Evaluating on test set...")
+    test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
+    print(f"   Test Loss: {test_loss:.4f}")
+    print(f"   Test Accuracy: {test_acc:.2%}")
+    
+    # Predictions
+    y_pred = np.argmax(model.predict(X_test, verbose=0), axis=1)
+    
+    print(f"\n📈 Classification Report:")
+    print(classification_report(y_test, y_pred, target_names=label_names))
+    
+    print(f"\n🔢 Confusion Matrix:")
+    cm = confusion_matrix(y_test, y_pred)
+    print(cm)
     
     # Save model
-    model_path = os.path.join(OUTPUT_DIR, f'{MODEL_NAME}.keras')
-    lstm_model.save_model(model_path)
-    
-    # Plot and save training history
-    plot_path = os.path.join(OUTPUT_DIR, f'{MODEL_NAME}_training.png')
-    lstm_model.plot_training_history(save_path=plot_path, show=SHOW_PLOTS)
-    
-    # Plot and save confusion matrix
-    cm_path = os.path.join(OUTPUT_DIR, f'{MODEL_NAME}_confusion_matrix.png')
-    lstm_model.plot_confusion_matrix(results['confusion_matrix'], label_names, 
-                                     save_path=cm_path, show=SHOW_PLOTS)
+    model_path = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}.keras")
+    model.save(model_path)
+    print(f"\n💾 Model saved to: {model_path}")
     
     # Save metadata
     metadata = {
-        'pose_type': processor.pose_type,
-        'sequence_length': SEQUENCE_LENGTH,
-        'stride': STRIDE,
+        'model_name': MODEL_NAME,
+        'pose_type': pose_type,
+        'frames_per_phase': FRAMES_PER_PHASE,
         'num_classes': len(label_names),
         'label_names': label_names,
-        'test_accuracy': float(results['test_accuracy']),
-        'test_loss': float(results['test_loss']),
-        'lstm_units': LSTM_UNITS,
-        'dropout': DROPOUT,
-        'learning_rate': LEARNING_RATE
+        'input_shape': [n_frames, n_features],
+        'test_accuracy': float(test_acc),
+        'training_mode': TRAINING_MODE
     }
     
-    metadata_path = os.path.join(OUTPUT_DIR, f'{MODEL_NAME}_metadata.json')
+    metadata_path = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_metadata.json")
     with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=2)
     
-    print(f"\n💾 Metadata saved to: {metadata_path}")
+    # Plot training history
+    if SHOW_PLOTS:
+        plt.figure(figsize=(12, 4))
+        
+        plt.subplot(1, 2, 1)
+        plt.plot(history.history['loss'], label='Train Loss')
+        plt.plot(history.history['val_loss'], label='Val Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training and Validation Loss')
+        
+        plt.subplot(1, 2, 2)
+        plt.plot(history.history['accuracy'], label='Train Acc')
+        plt.plot(history.history['val_accuracy'], label='Val Acc')
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.legend()
+        plt.title('Training and Validation Accuracy')
+        
+        plt.tight_layout()
+        plot_path = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_training.png")
+        plt.savefig(plot_path)
+        print(f"📊 Training plots saved to: {plot_path}")
+        plt.show()
     
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print("✅ TRAINING COMPLETE!")
-    print("=" * 60)
-    print(f"📂 All outputs saved to: {OUTPUT_DIR}/")
-    print(f"   Model: {model_path}")
-    print(f"   Training plot: {plot_path}")
-    print(f"   Confusion matrix: {cm_path}")
-    print(f"   Metadata: {metadata_path}")
-    print("\n🎯 Final Test Accuracy: {:.2f}%".format(results['test_accuracy'] * 100))
+    print("=" * 70)
 
 
 if __name__ == "__main__":
