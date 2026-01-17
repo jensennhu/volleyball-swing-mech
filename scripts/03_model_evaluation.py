@@ -31,11 +31,11 @@ from sklearn.preprocessing import StandardScaler
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-MODEL_PATH = "lstm_models/spike_phase_classifier.keras"
-METADATA_PATH = "lstm_models/spike_phase_classifier_metadata.json"
-POSE_DATA_PATH = "frames_with_pose/pose_data.json"
-SPIKE_METADATA_PATH = "downsampled_sequences/spike_sequences_metadata.json"
-OUTPUT_PATH = "model_predict/spike_predictions.json"
+MODEL_PATH = "models/spike_phase_classifier_normalized_3layers.keras"
+METADATA_PATH = "models/spike_phase_classifier_normalized_3layers_metadata.json"
+POSE_DATA_PATH = "data/processed/pose_sequences/frames_with_pose/pose_data_normalized.json"
+SPIKE_METADATA_PATH = "data/processed/pose_sequences/frames_downsampled/spike_sequences_metadata.json"
+OUTPUT_PATH = "outputs/predictions/spike_predictions.json"
 SAVE_PREDICTIONS = True
 VERBOSE = True
 # ============================================================================

@@ -15,14 +15,14 @@ import os
 # Add current directory to path to import normalized_pose_features
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from frame_pose_analyzer_normalized import analyze_extracted_frames
+from src.preprocessing.frame_pose_analyzer_normalized import analyze_extracted_frames
 
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-FRAMES_DIR = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/downsampled_sequences"        # Directory with your extracted PNG frames
-ANNOTATIONS_PATH = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/annotations/annotations 5.xml"           # Path to your annotations XML file
-OUTPUT_DIR =  "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/frames_with_pose"       # Where to save frames with pose overlays
+FRAMES_DIR = "data/processed/pose_sequences/frames_downsampled"       # Directory with your extracted PNG frames
+ANNOTATIONS_PATH = "data/raw/annotations/annotations.xml"          # Path to your annotations XML file
+OUTPUT_DIR =  "data/processed/pose_sequences/frames_with_pose"      # Where to save frames with pose overlays
 SAVE_JSON = True                               # Save pose data as JSON file
 VERBOSE = True                                 # Show progress output
 # ============================================================================

@@ -36,10 +36,10 @@ except ImportError:
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-POSE_DATA_PATH = "frames_with_pose/pose_data_normalized.json"  # Path to pose data JSON
-SPIKE_METADATA_PATH = "downsampled_sequences/spike_sequences_metadata.json"  # Spike metadata
+POSE_DATA_PATH = "data/processed/pose_sequences/frames_with_pose/pose_data_normalized.json"  # Path to pose data JSON
+SPIKE_METADATA_PATH = "data/processed/pose_sequences/frames_downsampled/spike_sequences_metadata.json"  # Spike metadata
 POSE_TYPE = "auto"                      # "auto", "mediapipe", or "yolo"
-OUTPUT_DIR = "lstm_models"              # Where to save trained models
+OUTPUT_DIR = "models"              # Where to save trained models
 MODEL_NAME = "spike_phase_classifier_normalized_3layers"   # Model name prefix
 
 # Training mode

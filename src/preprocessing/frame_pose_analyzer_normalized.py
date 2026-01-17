@@ -23,6 +23,8 @@ import glob
 import re
 from typing import Dict, List, Tuple, Optional
 import json
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from normalized_pose_features import NormalizedPoseExtractor
 
 # Initialize MediaPipe Pose
@@ -173,7 +175,7 @@ def process_frame_with_normalized_pose(
 def analyze_extracted_frames(
     frames_dir: str,
     annotations_path: str,
-    output_dir: str = 'frames_with_pose_normalized',
+    output_dir: str = 'frames_with_pose',
     save_data: bool = True,
     verbose: bool = True
 ) -> Dict:

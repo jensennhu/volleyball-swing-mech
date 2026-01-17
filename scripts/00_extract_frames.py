@@ -31,9 +31,9 @@ from datetime import datetime
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-VIDEO_PATH = "/Users/jensenhu/Documents/GitHub/volley-vision-vids/hitting-session.mp4"
-ANNOTATIONS_PATH = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/annotations/annotations 5.xml"
-OUTPUT_DIR = "/Users/jensenhu/Documents/GitHub/volleyball-swing-mech/downsampled_sequences"
+VIDEO_PATH = "data/raw/videos/recorded_videos/hitting-session.mp4"
+ANNOTATIONS_PATH = "data/raw/annotations/annotations.xml"
+OUTPUT_DIR = "data/processed/pose_sequences/frames_downsampled"
 FILENAME_PREFIX = "frame"
 
 # Cropping options

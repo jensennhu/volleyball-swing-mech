@@ -46,18 +46,18 @@ except ImportError:
     exit(1)
 
 # Import normalized feature extractor
-from normalized_pose_features import NormalizedPoseExtractor
+from src.preprocessing.normalized_pose_features import NormalizedPoseExtractor
 
 
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-MODEL_PATH = "lstm_models/spike_phase_classifier_normalized_3layers.keras"
-METADATA_PATH = "lstm_models/spike_phase_classifier_normalized_3layers_metadata.json"
+MODEL_PATH = "models/spike_phase_classifier_normalized_3layers.keras"
+METADATA_PATH = "models/spike_phase_classifier_normalized_3layers_metadata.json"
 
 # Video source
 #VIDEO_SOURCE = 0                        # 0 = webcam, or path to video file
-VIDEO_SOURCE = "recorded_videos/hitting-session.mp4"
+VIDEO_SOURCE = "data/raw/videos/recorded_videos/hitting-session.mp4"
 
 # Buffer settings
 BUFFER_SIZE = 10                       # Number of frames to buffer
