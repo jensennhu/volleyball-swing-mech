@@ -15,7 +15,7 @@ from ultralytics import YOLO
 
 from spike_platform.config import settings
 
-_BYTETRACK_CFG = str(Path(__file__).resolve().parent.parent / "cfg" / "bytetrack.yaml")
+_TRACKER_CFG = str(Path(__file__).resolve().parent.parent / "cfg" / "bytetrack.yaml")
 
 
 @dataclass
@@ -85,7 +85,7 @@ class PersonDetector:
         results = self.model.track(
             source=video_path,
             stream=True,
-            tracker=_BYTETRACK_CFG,
+            tracker=_TRACKER_CFG,
             conf=settings.DETECTION_CONFIDENCE,
             iou=settings.DETECTION_IOU,
             classes=[settings.PERSON_CLASS_ID],

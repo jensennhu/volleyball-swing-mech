@@ -19,7 +19,12 @@ from spike_platform.models.db_models import Video, Track, TrackFrame, Segment
 from spike_platform.services.detection import PersonDetector, TrackResult, FrameDetection
 from spike_platform.services.pose import PoseService
 from spike_platform.services.segmentation import create_segments_for_track, SegmentData
-from spike_platform.services.track_postprocess import detect_id_switches, merge_fragmented_tracks
+from spike_platform.services.reid import ReIDEncoder
+from spike_platform.services.track_postprocess import (
+    detect_id_switches,
+    extract_track_embeddings,
+    merge_fragmented_tracks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +73,13 @@ def process_video_pipeline(
             ),
         )
 
-        # Post-process: fix ID switches first, then merge fragments
-        track_results = detect_id_switches(track_results)
-        track_results = merge_fragmented_tracks(track_results)
+        # Post-process: extract ReID embeddings, then fix ID switches and merge fragments
+        if progress_callback:
+            progress_callback(40.0, "Extracting appearance embeddings for tracks...")
+        encoder = ReIDEncoder()
+        embeddings = extract_track_embeddings(video.filepath, track_results, encoder)
+        track_results = detect_id_switches(track_results, embeddings)
+        track_results = merge_fragmented_tracks(track_results, embeddings)
 
         # Filter to tracks with enough frames
         long_tracks = [t for t in track_results if t.frame_count >= settings.MIN_TRACK_FRAMES]

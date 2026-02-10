@@ -2,9 +2,14 @@
 Post-processing for ByteTrack results: merge fragmented tracks and detect ID switches.
 
 Operates on in-memory TrackResult objects (before DB storage).
+Optionally uses ReID embeddings (from OSNet) for appearance-based decisions.
 """
 
 import logging
+from typing import Optional
+
+import cv2
+import numpy as np
 
 from spike_platform.config import settings
 from spike_platform.services.detection import TrackResult, FrameDetection
@@ -47,11 +52,148 @@ def _avg_bbox(frames: list[FrameDetection]) -> tuple[float, float, float, float]
     )
 
 
-def detect_id_switches(tracks: list[TrackResult]) -> list[TrackResult]:
+def extract_track_embeddings(
+    video_path: str,
+    tracks: list[TrackResult],
+    encoder,
+    boundary_frames: int = 5,
+) -> dict[int, dict[str, np.ndarray]]:
+    """
+    Extract ReID embeddings for each track's head and tail boundary frames.
+
+    Does a single sequential video read, only decoding frames that are needed.
+    Returns per-track embeddings for merge/split decisions.
+
+    Args:
+        video_path: Path to video file.
+        tracks: List of TrackResult objects.
+        encoder: ReIDEncoder instance.
+        boundary_frames: Number of frames to sample from head/tail of each track.
+
+    Returns:
+        Dict mapping track_id -> {"head": embedding, "tail": embedding, "mean": embedding}
+        where each embedding is shape (512,).
+    """
+    if not tracks:
+        return {}
+
+    # Collect which frames we need and what crops to extract
+    # frame_number -> list of (track_id, "head"/"tail", bbox)
+    frame_requests: dict[int, list[tuple[int, str, tuple]]] = {}
+
+    for track in tracks:
+        n = len(track.frames)
+        head_frames = track.frames[:boundary_frames]
+        tail_frames = track.frames[max(0, n - boundary_frames):]
+
+        for det in head_frames:
+            frame_requests.setdefault(det.frame_number, []).append(
+                (track.track_id, "head", det.bbox)
+            )
+        for det in tail_frames:
+            frame_requests.setdefault(det.frame_number, []).append(
+                (track.track_id, "tail", det.bbox)
+            )
+
+    needed_frames = sorted(frame_requests.keys())
+    if not needed_frames:
+        return {}
+
+    # Single sequential video read
+    cap = cv2.VideoCapture(video_path)
+    current_frame = 0
+    needed_idx = 0
+
+    # Collect crops: track_id -> {"head": [crops], "tail": [crops]}
+    track_crops: dict[int, dict[str, list[np.ndarray]]] = {}
+
+    while needed_idx < len(needed_frames):
+        target = needed_frames[needed_idx]
+
+        while current_frame < target:
+            cap.grab()
+            current_frame += 1
+
+        ret, frame = cap.read()
+        current_frame += 1
+        if not ret:
+            break
+
+        h, w = frame.shape[:2]
+        for track_id, boundary, bbox in frame_requests[target]:
+            x1 = max(0, int(bbox[0]))
+            y1 = max(0, int(bbox[1]))
+            x2 = min(w, int(bbox[2]))
+            y2 = min(h, int(bbox[3]))
+
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            crop = frame[y1:y2, x1:x2]
+            if crop.size == 0:
+                continue
+
+            track_crops.setdefault(track_id, {"head": [], "tail": []})
+            track_crops[track_id][boundary].append(crop)
+
+        needed_idx += 1
+
+    cap.release()
+
+    # Encode all crops in batches per track
+    result: dict[int, dict[str, np.ndarray]] = {}
+
+    for track_id, boundaries in track_crops.items():
+        head_crops = boundaries["head"]
+        tail_crops = boundaries["tail"]
+
+        head_emb = None
+        tail_emb = None
+
+        if head_crops:
+            head_embs = encoder.encode_batch(head_crops)
+            head_emb = head_embs.mean(axis=0)
+            head_emb = head_emb / (np.linalg.norm(head_emb) + 1e-8)
+
+        if tail_crops:
+            tail_embs = encoder.encode_batch(tail_crops)
+            tail_emb = tail_embs.mean(axis=0)
+            tail_emb = tail_emb / (np.linalg.norm(tail_emb) + 1e-8)
+
+        # Mean of head and tail for overall track embedding
+        if head_emb is not None and tail_emb is not None:
+            mean_emb = (head_emb + tail_emb) / 2
+            mean_emb = mean_emb / (np.linalg.norm(mean_emb) + 1e-8)
+        elif head_emb is not None:
+            mean_emb = head_emb
+        elif tail_emb is not None:
+            mean_emb = tail_emb
+        else:
+            continue
+
+        result[track_id] = {
+            "head": head_emb if head_emb is not None else mean_emb,
+            "tail": tail_emb if tail_emb is not None else mean_emb,
+            "mean": mean_emb,
+        }
+
+    logger.info(f"Extracted ReID embeddings for {len(result)}/{len(tracks)} tracks")
+    return result
+
+
+def detect_id_switches(
+    tracks: list[TrackResult],
+    embeddings: Optional[dict[int, dict[str, np.ndarray]]] = None,
+) -> list[TrackResult]:
     """Detect and split tracks where the bbox jumps to a different person.
 
     A jump is flagged when bbox center displacement between consecutive frames
     exceeds TRACK_SWITCH_MAX_JUMP * bbox_height.
+
+    If ReID embeddings are provided, the head vs tail embedding similarity
+    is used to confirm or suppress splits:
+    - cosine_sim > 0.7: suppress split (same person moved fast)
+    - cosine_sim < 0.4: confirm split (different person)
     """
     max_jump = settings.TRACK_SWITCH_MAX_JUMP
     result = []
@@ -79,6 +221,21 @@ def detect_id_switches(tracks: list[TrackResult]) -> list[TrackResult]:
                     f"{curr.frame_number} (jump={dist:.0f}px, {dist/h:.1f}x bbox height)"
                 )
 
+        # If we have embeddings, use head/tail similarity to confirm or suppress
+        if split_points and embeddings and track.track_id in embeddings:
+            emb = embeddings[track.track_id]
+            head_emb = emb["head"]
+            tail_emb = emb["tail"]
+            sim = float(np.dot(head_emb, tail_emb))
+            logger.info(
+                f"Track {track.track_id} head-tail cosine sim: {sim:.3f}"
+            )
+            if sim > 0.7:
+                logger.info(
+                    f"Suppressing split for track {track.track_id} (high appearance similarity {sim:.3f})"
+                )
+                split_points = []
+
         if not split_points:
             result.append(track)
         else:
@@ -103,11 +260,18 @@ def detect_id_switches(tracks: list[TrackResult]) -> list[TrackResult]:
     return result
 
 
-def merge_fragmented_tracks(tracks: list[TrackResult]) -> list[TrackResult]:
+def merge_fragmented_tracks(
+    tracks: list[TrackResult],
+    embeddings: Optional[dict[int, dict[str, np.ndarray]]] = None,
+) -> list[TrackResult]:
     """Merge tracks that are likely fragments of the same person.
 
     Two tracks are merged if they are temporally close and spatially similar
     at their boundary frames.
+
+    If ReID embeddings are provided:
+    - Block merge if cosine_sim < 0.3 (clearly different people)
+    - Allow merge with relaxed spatial constraints if cosine_sim > 0.6
     """
     if len(tracks) <= 1:
         return tracks
@@ -163,17 +327,47 @@ def merge_fragmented_tracks(tracks: list[TrackResult]) -> list[TrackResult]:
             area_b = _bbox_area(avg_b)
             size_ratio = min(area_a, area_b) / max(area_a, area_b) if max(area_a, area_b) > 0 else 0
 
+            # Compute ReID cosine similarity if available
+            reid_sim = None
+            if embeddings:
+                emb_a = embeddings.get(track_a.track_id)
+                emb_b = embeddings.get(track_b.track_id)
+                if emb_a is not None and emb_b is not None:
+                    # Compare tail of A with head of B
+                    reid_sim = float(np.dot(emb_a["tail"], emb_b["head"]))
+
+            # Decision logic
             should_merge = False
-            if iou > min_iou:
-                should_merge = True
-            elif h > 0 and dist < 1.5 * h and size_ratio > 0.6:
-                should_merge = True
+
+            if reid_sim is not None:
+                if reid_sim < 0.3:
+                    # Clearly different people — block merge regardless of spatial
+                    logger.debug(
+                        f"Blocking merge of tracks {track_a.track_id} and {track_b.track_id} "
+                        f"(reid_sim={reid_sim:.3f} < 0.3)"
+                    )
+                    continue
+                elif reid_sim > 0.6:
+                    # High appearance similarity — relax spatial constraints
+                    if h > 0 and dist < 3.0 * h:
+                        should_merge = True
+                    elif iou > min_iou:
+                        should_merge = True
+
+            # Standard spatial merge criteria (if not already decided)
+            if not should_merge:
+                if iou > min_iou:
+                    should_merge = True
+                elif h > 0 and dist < 1.5 * h and size_ratio > 0.6:
+                    should_merge = True
 
             if should_merge:
                 union(i, j)
+                sim_str = f", reid_sim={reid_sim:.3f}" if reid_sim is not None else ""
                 logger.info(
                     f"Merging tracks {track_a.track_id} and {track_b.track_id} "
-                    f"(gap={gap} frames, IoU={iou:.2f}, dist={dist:.0f}px, size_ratio={size_ratio:.2f})"
+                    f"(gap={gap} frames, IoU={iou:.2f}, dist={dist:.0f}px, "
+                    f"size_ratio={size_ratio:.2f}{sim_str})"
                 )
 
     # Build merged tracks from clusters
