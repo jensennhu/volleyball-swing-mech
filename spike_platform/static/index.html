@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volleyball Spike Detector</title>
+    <link rel="stylesheet" href="styles.css?v=9">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Volleyball Spike Detector</h1>
+        <nav>
+            <button class="active" data-view="videos">Videos</button>
+            <button data-view="review">Review</button>
+            <button data-view="training">Training</button>
+        </nav>
+    </header>
+
+    <!-- View 1: Video Manager -->
+    <div id="view-videos" class="view active">
+        <div class="upload-area" id="upload-area">
+            <p>Drop video file here or click to upload</p>
+            <input type="file" id="file-input" accept="video/*" hidden>
+        </div>
+        <div id="upload-progress" style="display:none; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+                <span id="upload-filename"></span>
+                <span id="upload-pct">0%</span>
+            </div>
+            <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
+                <div id="upload-bar" style="height:100%; width:0%; background:var(--primary); border-radius:3px; transition:width 0.2s;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Tracks</th>
+                        <th>Segments</th>
+                        <th>Labeled</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="video-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- View 2: Segment Review -->
+    <div id="view-review" class="view">
+        <div class="review-mode-toggle" id="review-mode-toggle">
+            <button class="active" data-review-mode="spike">Spike Labeling</button>
+            <button data-review-mode="phase">Phase Annotation</button>
+        </div>
+
+        <div class="review-layout">
+            <div class="video-panel">
+                <div class="video-container" id="video-container">
+                    <video id="review-video" controls></video>
+                    <canvas id="bbox-canvas"></canvas>
+                </div>
+                <div class="video-controls">
+                    <span id="frame-counter">Frame: -</span>
+                    <span id="time-display">-</span>
+                </div>
+
+                <!-- Phase annotation panel (below video, visible in phase mode) -->
+                <div id="phase-annotation-panel" style="display:none;">
+                    <div class="phase-timeline-container">
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <button class="btn btn-sm btn-outline" id="extend-start-btn" title="Load 30 earlier frames">&larr;</button>
+                            <div class="phase-timeline" id="phase-timeline" style="flex:1;">
+                                <div class="phase-playhead" id="phase-playhead"></div>
+                            </div>
+                            <button class="btn btn-sm btn-outline" id="extend-end-btn" title="Load 30 later frames">&rarr;</button>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="phase-legend">
+                                <span class="phase-tag phase-approach">Approach</span>
+                                <span class="phase-tag phase-jump">Jump</span>
+                                <span class="phase-tag phase-swing">Swing</span>
+                                <span class="phase-tag phase-land">Land</span>
+                            </div>
+                            <span id="phase-frame-range" style="font-size:11px; color:var(--text-muted);"></span>
+                        </div>
+                    </div>
+                    <div class="phase-controls">
+                        <div class="shortcuts-hint">
+                            <kbd>1</kbd> approach &nbsp; <kbd>2</kbd> jump &nbsp;
+                            <kbd>3</kbd> swing &nbsp; <kbd>4</kbd> land &nbsp;
+                            <kbd>&larr;</kbd><kbd>&rarr;</kbd> step frame &nbsp;
+                            <kbd>Enter</kbd> save
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+                            <button class="btn btn-sm btn-primary" id="save-phases-btn">Save Phases</button>
+                            <button class="btn btn-sm btn-outline" id="accept-phases-btn" style="display:none; background:var(--primary); color:white; border-color:var(--primary);">Accept Predictions</button>
+                            <button class="btn btn-sm btn-outline" id="clear-phases-btn">Clear</button>
+                            <span id="phase-prediction-indicator" style="display:none; font-size:11px; color:var(--primary); font-weight:600; margin-left:4px;">Showing predictions</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="segment-panel">
+                <select id="review-video-select" style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px;">
+                    <option value="">Select a video to review...</option>
+                </select>
+
+                <!-- Spike labeling mode controls -->
+                <div id="spike-mode-controls">
+                    <div class="segment-filters" id="segment-filters">
+                        <button class="btn btn-sm btn-outline active" data-filter="all">All</button>
+                        <button class="btn btn-sm btn-outline" data-filter="spike">Spike</button>
+                        <button class="btn btn-sm btn-outline" data-filter="non-spike">Non-spike</button>
+                        <button class="btn btn-sm btn-outline" data-filter="unlabeled">Unlabeled</button>
+                    </div>
+
+                    <div class="shortcuts-hint">
+                        <kbd>S</kbd> spike &nbsp; <kbd>N</kbd> non-spike &nbsp;
+                        <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate
+                    </div>
+                </div>
+
+                <!-- Phase annotation mode controls -->
+                <div id="phase-mode-controls" style="display:none;">
+                    <div class="shortcuts-hint" style="margin-bottom:8px;">
+                        Showing spike segments only. Select one to annotate phases.
+                    </div>
+                </div>
+
+                <div class="segment-list" id="segment-list">
+                </div>
+
+                <div class="stats-bar" id="stats-bar">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View 3: Training Dashboard -->
+    <div id="view-training" class="view">
+        <div class="training-grid">
+            <div class="card">
+                <h3 style="margin-bottom:16px; font-size:14px;">Training Configuration</h3>
+                <form id="training-form">
+                    <div class="form-group">
+                        <label>Task</label>
+                        <select name="task_type" id="training-task-type">
+                            <option value="spike_detection">Spike Detection</option>
+                            <option value="phase_classification">Phase Classification</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Epochs</label>
+                        <input type="number" name="epochs" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Learning Rate</label>
+                        <input type="number" name="learning_rate" value="0.001" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label>Batch Size</label>
+                        <input type="number" name="batch_size" value="16">
+                    </div>
+                    <div class="form-group">
+                        <label>Dropout</label>
+                        <input type="number" name="dropout" value="0.3" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label>Class Weight (Positive)</label>
+                        <input type="number" name="class_weight_positive" value="2.0" step="0.5">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="start-training-btn">Start Training</button>
+                </form>
+
+                <div id="training-status" style="margin-top:16px; font-size:13px; color:var(--text-muted);"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:16px; font-size:14px;">Training History</h3>
+                <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Run</th>
+                            <th>Status</th>
+                            <th>Samples</th>
+                            <th>Accuracy</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1</th>
+                            <th>AUC</th>
+                            <th>Loss</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="training-table-body">
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+            <h3 style="margin-bottom:8px; font-size:14px;">Label Distribution</h3>
+            <div id="label-stats" style="font-size:13px; color:var(--text-muted);">
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+            <h3 style="margin-bottom:16px; font-size:14px;">Metrics Over Training Runs</h3>
+            <div style="height:320px;">
+                <canvas id="metrics-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="app.js?v=13"></script>
+</body>
+</html>

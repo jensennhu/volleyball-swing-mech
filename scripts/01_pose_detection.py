@@ -20,7 +20,7 @@ from src.preprocessing.frame_pose_analyzer_normalized import analyze_extracted_f
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-FRAMES_DIR = "data/processed/pose_sequences/frames_downsampled"       # Directory with your extracted PNG frames
+FRAMES_DIR = "data/processed/pose_sequences/frames_downsampled_multi"       # Directory with your extracted PNG frames
 ANNOTATIONS_PATH = "data/raw/annotations/annotations.xml"          # Path to your annotations XML file
 OUTPUT_DIR =  "data/processed/pose_sequences/frames_with_pose"      # Where to save frames with pose overlays
 SAVE_JSON = True                               # Save pose data as JSON file

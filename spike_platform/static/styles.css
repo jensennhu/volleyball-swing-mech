@@ -1,0 +1,463 @@
+/* Volleyball Spike Detector Platform - Styles */
+
+:root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #232736;
+    --border: #2a2e3a;
+    --text: #e4e4e7;
+    --text-muted: #71717a;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --spike: #ef4444;
+    --non-spike: #6b7280;
+    --radius: 6px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* Layout */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.app-header h1 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+nav {
+    display: flex;
+    gap: 4px;
+}
+
+nav button {
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+}
+
+nav button:hover { background: var(--surface-hover); color: var(--text); }
+nav button.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.view { display: none; padding: 24px; max-width: 1400px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* Cards & Tables */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+th { color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+tr:hover td { background: var(--surface-hover); }
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.btn-outline:hover { background: var(--surface-hover); }
+
+.btn-spike { background: var(--spike); color: white; }
+.btn-spike:hover { opacity: 0.85; }
+.btn-non-spike { background: var(--non-spike); color: white; }
+.btn-non-spike:hover { opacity: 0.85; }
+
+/* Status badges */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-uploaded { background: #374151; color: #9ca3af; }
+.badge-processing { background: #92400e; color: #fbbf24; }
+.badge-processed { background: #1e3a5f; color: #60a5fa; }
+.badge-predicted { background: #14532d; color: #4ade80; }
+.badge-error { background: #7f1d1d; color: #fca5a5; }
+
+/* Upload area */
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 20px;
+}
+
+.upload-area:hover, .upload-area.dragover {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+/* Review layout */
+.review-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 16px;
+    height: calc(100vh - 160px);
+}
+
+.video-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.video-container {
+    position: relative;
+}
+
+.video-container video {
+    width: 100%;
+    border-radius: var(--radius);
+    background: black;
+    display: block;
+}
+
+.video-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border-radius: var(--radius);
+}
+
+.video-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.segment-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+}
+
+.segment-filters {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.segment-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.segment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+}
+
+.segment-card:hover { border-color: var(--primary); }
+.segment-card.selected { border-color: var(--primary); background: var(--surface-hover); }
+
+.segment-card .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.segment-card .seg-fields {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.segment-card .seg-field {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.segment-card .seg-label {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.confidence-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.confidence-bar .fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+.segment-card .actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* Stats bar */
+.stats-bar {
+    display: flex;
+    gap: 16px;
+    padding: 10px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+}
+
+.stats-bar .stat-value { color: var(--text); font-weight: 600; }
+
+/* Training dashboard */
+.training-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+}
+
+/* Keyboard shortcuts hint */
+.shortcuts-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 6px 0;
+}
+
+kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface-hover);
+    font-size: 11px;
+    font-family: inherit;
+}
+
+/* Best training run highlight */
+tr.best-run td { background: rgba(34, 197, 94, 0.08); }
+
+/* Review mode toggle */
+.review-mode-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.review-mode-toggle button {
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+}
+
+.review-mode-toggle button:hover { background: var(--surface-hover); color: var(--text); }
+.review-mode-toggle button.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Phase annotation */
+#phase-annotation-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: 8px;
+}
+
+.phase-timeline-container {
+    margin-bottom: 8px;
+}
+
+.phase-timeline {
+    position: relative;
+    height: 32px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.phase-region {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.phase-region:hover { opacity: 1; }
+
+.phase-region.phase-predicted {
+    opacity: 0.45;
+}
+
+.phase-region.phase-predicted::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 3px,
+        rgba(255, 255, 255, 0.2) 3px,
+        rgba(255, 255, 255, 0.2) 6px
+    );
+}
+
+.phase-region.phase-predicted:hover { opacity: 0.7; }
+
+.phase-playhead {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: white;
+    z-index: 10;
+    pointer-events: none;
+    transition: left 0.05s;
+}
+
+.segment-marker {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+
+.phase-legend {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.phase-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 3px;
+    color: white;
+}
+
+.phase-approach { background: #3b82f6; }
+.phase-jump { background: #22c55e; }
+.phase-swing { background: #f59e0b; }
+.phase-land { background: #ef4444; }
+
+.phase-controls {
+    font-size: 12px;
+}
+
+/* Processing progress bar */
+.processing-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 120px;
+}
+
+.processing-bar .fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width 0.5s;
+    width: 0%;
+}

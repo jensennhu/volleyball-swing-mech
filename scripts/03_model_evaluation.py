@@ -31,10 +31,10 @@ from sklearn.preprocessing import StandardScaler
 # ============================================================================
 # CONFIGURATION - Edit these parameters
 # ============================================================================
-MODEL_PATH = "models/spike_phase_classifier_normalized_3layers.keras"
-METADATA_PATH = "models/spike_phase_classifier_normalized_3layers_metadata.json"
+MODEL_PATH = "models/model_20260120.keras"
+METADATA_PATH = "models/model_20260120_metadata.json"
 POSE_DATA_PATH = "data/processed/pose_sequences/frames_with_pose/pose_data_normalized.json"
-SPIKE_METADATA_PATH = "data/processed/pose_sequences/frames_downsampled/spike_sequences_metadata.json"
+SPIKE_METADATA_PATH = "data/processed/pose_sequences/frames_downsampled_multi/spike_sequences_metadata.json"
 OUTPUT_PATH = "outputs/predictions/spike_predictions.json"
 SAVE_PREDICTIONS = True
 VERBOSE = True

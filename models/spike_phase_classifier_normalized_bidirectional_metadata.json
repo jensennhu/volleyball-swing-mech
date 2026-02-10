@@ -1,0 +1,20 @@
+{
+  "model_name": "spike_phase_classifier_normalized_bidirectional",
+  "pose_type": "mediapipe",
+  "frames_per_phase": 10,
+  "num_classes": 4,
+  "label_names": [
+    "approach",
+    "jump",
+    "land",
+    "swing"
+  ],
+  "input_shape": [
+    10,
+    33
+  ],
+  "test_accuracy": 1.0,
+  "training_mode": "phase",
+  "bidirectional": true,
+  "real_time_compatible": false
+}

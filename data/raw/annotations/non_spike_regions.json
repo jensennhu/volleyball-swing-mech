@@ -1,0 +1,60 @@
+{
+  "video_path": "data/raw/videos/recorded_videos/hitting-session.mp4",
+  "annotation_date": "2026-01-25T19:00:36.340315",
+  "num_regions": 6,
+  "regions": [
+    {
+      "start_frame": 0,
+      "end_frame": 240,
+      "duration_frames": 240,
+      "duration_seconds": 4.0,
+      "start_time": "00:00",
+      "end_time": "00:04"
+    },
+    {
+      "start_frame": 1380,
+      "end_frame": 1560,
+      "duration_frames": 180,
+      "duration_seconds": 3.0,
+      "start_time": "00:23",
+      "end_time": "00:26"
+    },
+    {
+      "start_frame": 1860,
+      "end_frame": 1920,
+      "duration_frames": 60,
+      "duration_seconds": 1.0,
+      "start_time": "00:31",
+      "end_time": "00:32"
+    },
+    {
+      "start_frame": 2700,
+      "end_frame": 2760,
+      "duration_frames": 60,
+      "duration_seconds": 1.0,
+      "start_time": "00:45",
+      "end_time": "00:46"
+    },
+    {
+      "start_frame": 3060,
+      "end_frame": 3120,
+      "duration_frames": 60,
+      "duration_seconds": 1.0,
+      "start_time": "00:51",
+      "end_time": "00:52"
+    },
+    {
+      "start_frame": 3480,
+      "end_frame": 3600,
+      "duration_frames": 120,
+      "duration_seconds": 2.0,
+      "start_time": "00:58",
+      "end_time": "01:00"
+    }
+  ],
+  "metadata": {
+    "purpose": "Non-spike regions for training binary spike detector",
+    "tool": "annotate_non_spikes.py",
+    "version": "1.0"
+  }
+}
