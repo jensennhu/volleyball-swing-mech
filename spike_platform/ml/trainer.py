@@ -93,10 +93,13 @@ class SpikeTrainer:
 
         # Create datasets and loaders
         train_ds = SpikeDataset(train_features, train_labels, self.scaler)
-        val_ds = SpikeDataset(val_features, val_labels, self.scaler)
+        has_val = len(val_features) > 0
 
         train_loader = DataLoader(train_ds, batch_size=self.batch_size, shuffle=True)
-        val_loader = DataLoader(val_ds, batch_size=self.batch_size, shuffle=False)
+        val_loader = None
+        if has_val:
+            val_ds = SpikeDataset(val_features, val_labels, self.scaler)
+            val_loader = DataLoader(val_ds, batch_size=self.batch_size, shuffle=False)
 
         # Loss with class weighting
         pos_weight = torch.tensor([self.class_weight_positive], device=self.device)
@@ -129,16 +132,18 @@ class SpikeTrainer:
 
             # Validate
             self.model.eval()
-            val_losses = []
-            with torch.no_grad():
-                for batch_x, batch_y in val_loader:
-                    batch_x = batch_x.to(self.device)
-                    batch_y = batch_y.to(self.device)
-                    logits = self.model(batch_x)
-                    loss = criterion(logits, batch_y)
-                    val_losses.append(loss.item())
-
-            val_loss = np.mean(val_losses)
+            if has_val:
+                val_losses = []
+                with torch.no_grad():
+                    for batch_x, batch_y in val_loader:
+                        batch_x = batch_x.to(self.device)
+                        batch_y = batch_y.to(self.device)
+                        logits = self.model(batch_x)
+                        loss = criterion(logits, batch_y)
+                        val_losses.append(loss.item())
+                val_loss = np.mean(val_losses)
+            else:
+                val_loss = train_loss  # no val set — use train loss for early stopping
             scheduler.step(val_loss)
 
             # Early stopping

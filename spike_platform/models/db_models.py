@@ -45,6 +45,8 @@ class Track(Base):
     end_frame = Column(Integer, nullable=False)
     frame_count = Column(Integer, nullable=False)
     avg_confidence = Column(Float, nullable=True)
+    role = Column(String, nullable=True, default="unknown")  # player|non_player|unknown
+    role_source = Column(String, nullable=True)  # heuristic|human
     created_at = Column(DateTime, default=_utcnow)
 
     video = relationship("Video", back_populates="tracks")
@@ -153,6 +155,7 @@ class TrainingRun(Base):
 
     # Artifacts
     checkpoint_dir = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
 
     started_at = Column(DateTime, default=_utcnow)
     completed_at = Column(DateTime, nullable=True)

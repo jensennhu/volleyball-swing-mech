@@ -41,9 +41,13 @@ class Settings:
     LR_REDUCE_PATIENCE: int = 7
 
     # Track post-processing
-    TRACK_MERGE_MAX_GAP: int = 40        # max frames between tracks to consider merging
-    TRACK_MERGE_MIN_IOU: float = 0.2     # min bbox IoU to merge
     TRACK_SWITCH_MAX_JUMP: float = 2.0   # max bbox-center displacement (in bbox heights)
+    REID_SAMPLE_INTERVAL: int = 30       # frames between ReID embedding samples
+    REID_SWITCH_THRESHOLD: float = 0.4   # cosine sim below this triggers split
+
+    # Track role classification
+    TRACK_ROLE_POSE_CONF_THRESHOLD: float = 0.5   # tracks below this are likely non-players
+    TRACK_ROLE_BBOX_AREA_RATIO: float = 0.5        # relative to video median bbox area
 
     # Features
     FEATURE_DIM: int = 33

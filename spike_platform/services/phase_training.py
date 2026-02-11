@@ -6,6 +6,7 @@ from track_frames, trains a PhaseLSTM, and saves checkpoint.
 """
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -14,14 +15,16 @@ import torch
 import joblib
 from pathlib import Path
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, Dataset
 
 from spike_platform.config import settings
 from spike_platform.database import SessionLocal
-from spike_platform.models.db_models import Segment, SegmentPhase, TrackFrame, TrainingRun
+from spike_platform.models.db_models import Segment, SegmentPhase, Track, TrackFrame, TrainingRun
 from spike_platform.ml.phase_lstm import PhaseLSTM
+from spike_platform.services.training import split_by_video
+
+logger = logging.getLogger(__name__)
 
 PHASE_TO_IDX = {"approach": 0, "jump": 1, "swing": 2, "land": 3}
 
@@ -91,12 +94,18 @@ def run_phase_training(
             db.commit()
             return
 
-        features_list = []
-        labels_list = []
+        # Collect sequences grouped by video
+        # video_id -> list of (features_array, labels_array)
+        video_data: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
 
         for seg_id in annotated_seg_ids:
             seg = db.query(Segment).filter(Segment.id == seg_id).first()
             if not seg:
+                continue
+
+            # Skip non-player tracks
+            track = db.query(Track).filter(Track.id == seg.track_id).first()
+            if track and track.role == "non_player":
                 continue
 
             # Get phase labels for this segment
@@ -154,38 +163,54 @@ def run_phase_training(
             if len(frame_features) < 10:
                 continue
 
-            features_list.append(np.array(frame_features, dtype=np.float32))
-            labels_list.append(np.array(frame_labels, dtype=np.int64))
+            video_data.setdefault(seg.video_id, []).append((
+                np.array(frame_features, dtype=np.float32),
+                np.array(frame_labels, dtype=np.int64),
+            ))
 
-        if len(features_list) < 5:
+        total_sequences = sum(len(v) for v in video_data.values())
+        if total_sequences < 5:
             run.status = "failed"
             db.commit()
             return
 
+        # Video-level split
+        video_ids = list(video_data.keys())
+        video_has_positive = [True] * len(video_ids)  # all have phase annotations
+        train_vids, val_vids, test_vids = split_by_video(video_ids, video_has_positive)
+
+        def collect_split(vids):
+            feats, labs = [], []
+            for v in vids:
+                for f, l in video_data[v]:
+                    feats.append(f)
+                    labs.append(l)
+            return feats, labs
+
+        train_feats, train_labs = collect_split(train_vids)
+        val_feats, val_labs = collect_split(val_vids)
+        test_feats, test_labs = collect_split(test_vids)
+
+        # Log split composition
+        for name, vids, feats in [
+            ("Train", train_vids, train_feats),
+            ("Val", val_vids, val_feats),
+            ("Test", test_vids, test_feats),
+        ]:
+            n_frames = sum(len(f) for f in feats)
+            logger.info(f"  {name}: {len(vids)} videos, {len(feats)} segments, {n_frames} frames")
+
         # Count samples
-        total_frames = sum(len(f) for f in features_list)
+        total_frames = sum(len(f) for f in train_feats + val_feats + test_feats)
         run.positive_count = total_frames  # total labeled frames
         run.negative_count = 0
-
-        # Split into train/val/test (by segment, not by frame)
-        indices = list(range(len(features_list)))
-        train_idx, temp_idx = train_test_split(indices, test_size=0.3, random_state=42)
-        val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42)
-
-        train_feats = [features_list[i] for i in train_idx]
-        train_labs = [labels_list[i] for i in train_idx]
-        val_feats = [features_list[i] for i in val_idx]
-        val_labs = [labels_list[i] for i in val_idx]
-        test_feats = [features_list[i] for i in test_idx]
-        test_labs = [labels_list[i] for i in test_idx]
-
         run.train_count = sum(len(f) for f in train_feats)
         run.val_count = sum(len(f) for f in val_feats)
         run.test_count = sum(len(f) for f in test_feats)
         db.commit()
 
         if progress_callback:
-            progress_callback(15.0, f"Training on {run.train_count} frames from {len(train_feats)} segments...")
+            progress_callback(15.0, f"Training on {run.train_count} frames from {len(train_feats)} segments ({len(train_vids)} videos)...")
 
         # Fit scaler on training data
         scaler = StandardScaler()
@@ -194,11 +219,14 @@ def run_phase_training(
 
         # Create datasets
         train_ds = PhaseDataset(train_feats, train_labs, scaler)
-        val_ds = PhaseDataset(val_feats, val_labs, scaler)
+        has_val = len(val_feats) > 0
 
         batch_size = run.batch_size
         train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+        val_loader = None
+        if has_val:
+            val_ds = PhaseDataset(val_feats, val_labs, scaler)
+            val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
         # Create model
         lstm_units = json.loads(run.lstm_units)
@@ -241,18 +269,21 @@ def run_phase_training(
 
             # Validate
             model.eval()
-            val_losses = []
-            with torch.no_grad():
-                for batch_x, batch_y, batch_len in val_loader:
-                    batch_x = batch_x.to(device)
-                    batch_y = batch_y.to(device)
-                    logits = model(batch_x)
-                    max_t = batch_x.size(1)
-                    mask = torch.arange(max_t, device=device).unsqueeze(0) < batch_len.unsqueeze(1).to(device)
-                    loss = model.crf_loss(logits, batch_y.clamp(min=0), mask)
-                    val_losses.append(loss.item())
+            if has_val:
+                val_losses = []
+                with torch.no_grad():
+                    for batch_x, batch_y, batch_len in val_loader:
+                        batch_x = batch_x.to(device)
+                        batch_y = batch_y.to(device)
+                        logits = model(batch_x)
+                        max_t = batch_x.size(1)
+                        mask = torch.arange(max_t, device=device).unsqueeze(0) < batch_len.unsqueeze(1).to(device)
+                        loss = model.crf_loss(logits, batch_y.clamp(min=0), mask)
+                        val_losses.append(loss.item())
+                val_loss = float(np.mean(val_losses))
+            else:
+                val_loss = train_loss  # no val set — use train loss for early stopping
 
-            val_loss = float(np.mean(val_losses))
             scheduler.step(val_loss)
 
             if val_loss < best_val_loss:
@@ -284,37 +315,41 @@ def run_phase_training(
         if progress_callback:
             progress_callback(90.0, "Evaluating on test set...")
 
-        # Evaluate
-        test_ds = PhaseDataset(test_feats, test_labs, scaler)
-        test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+        # Evaluate (skip if no test data)
+        if test_feats:
+            test_ds = PhaseDataset(test_feats, test_labs, scaler)
+            test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
-        model.eval()
-        all_preds = []
-        all_true = []
-        with torch.no_grad():
-            for batch_x, batch_y, batch_len in test_loader:
-                batch_x = batch_x.to(device)
-                logits = model(batch_x)  # (B, T, 4)
-                max_t = batch_x.size(1)
-                mask = torch.arange(max_t, device=device).unsqueeze(0) < batch_len.unsqueeze(1).to(device)
-                decoded = model.crf_decode(logits, mask)  # list of lists
-                labels = batch_y.numpy()
+            model.eval()
+            all_preds = []
+            all_true = []
+            with torch.no_grad():
+                for batch_x, batch_y, batch_len in test_loader:
+                    batch_x = batch_x.to(device)
+                    logits = model(batch_x)  # (B, T, 4)
+                    max_t = batch_x.size(1)
+                    mask = torch.arange(max_t, device=device).unsqueeze(0) < batch_len.unsqueeze(1).to(device)
+                    decoded = model.crf_decode(logits, mask)  # list of lists
+                    labels = batch_y.numpy()
 
-                for i in range(len(batch_len)):
-                    length = batch_len[i].item()
-                    valid_preds = decoded[i][:length]
-                    valid_labels = labels[i, :length]
-                    label_mask = valid_labels >= 0
-                    all_preds.extend(np.array(valid_preds)[label_mask].tolist())
-                    all_true.extend(valid_labels[label_mask].tolist())
+                    for i in range(len(batch_len)):
+                        length = batch_len[i].item()
+                        valid_preds = decoded[i][:length]
+                        valid_labels = labels[i, :length]
+                        label_mask = valid_labels >= 0
+                        all_preds.extend(np.array(valid_preds)[label_mask].tolist())
+                        all_true.extend(valid_labels[label_mask].tolist())
 
-        all_preds = np.array(all_preds)
-        all_true = np.array(all_true)
+            all_preds = np.array(all_preds)
+            all_true = np.array(all_true)
 
-        accuracy = float(accuracy_score(all_true, all_preds))
-        precision = float(precision_score(all_true, all_preds, average="macro", zero_division=0))
-        recall = float(recall_score(all_true, all_preds, average="macro", zero_division=0))
-        f1 = float(f1_score(all_true, all_preds, average="macro", zero_division=0))
+            accuracy = float(accuracy_score(all_true, all_preds))
+            precision = float(precision_score(all_true, all_preds, average="macro", zero_division=0))
+            recall = float(recall_score(all_true, all_preds, average="macro", zero_division=0))
+            f1 = float(f1_score(all_true, all_preds, average="macro", zero_division=0))
+        else:
+            logger.warning("No test set — skipping evaluation metrics.")
+            accuracy = precision = recall = f1 = None
 
         # Save checkpoint
         checkpoint_dir = Path(settings.CHECKPOINT_DIR / f"run_{run.id:03d}")
@@ -330,6 +365,12 @@ def run_phase_training(
             "use_crf": True,
             "best_epoch": best_epoch,
             "saved_at": datetime.now(timezone.utc).isoformat(),
+            "split": {
+                "method": "video_level",
+                "train_videos": train_vids,
+                "val_videos": val_vids,
+                "test_videos": test_vids,
+            },
         }
         (checkpoint_dir / "config.json").write_text(json.dumps(config, indent=2))
 
@@ -347,8 +388,9 @@ def run_phase_training(
         run.completed_at = datetime.now(timezone.utc)
         db.commit()
 
+        f1_str = f"{f1:.3f}" if f1 is not None else "N/A (no test set)"
         if progress_callback:
-            progress_callback(100.0, f"Phase training complete. Test F1 (macro): {f1:.3f}")
+            progress_callback(100.0, f"Phase training complete. Test F1 (macro): {f1_str}")
 
     except Exception:
         run = db.query(TrainingRun).filter(TrainingRun.id == training_run_id).first()

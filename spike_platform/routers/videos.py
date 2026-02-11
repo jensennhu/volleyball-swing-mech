@@ -13,7 +13,7 @@ from spike_platform.config import settings
 from spike_platform.database import get_db
 from spike_platform.models.db_models import Video, Track, TrackFrame, Segment
 from spike_platform.schemas.video import VideoResponse, VideoStatusResponse
-from spike_platform.schemas.segment import SegmentResponse, SegmentListResponse
+from spike_platform.schemas.segment import SegmentResponse, SegmentListResponse, TrackResponse, TrackRoleUpdate
 from spike_platform.worker import worker
 from spike_platform.services.video_processing import process_video_pipeline
 
@@ -237,6 +237,7 @@ def get_frame(video_id: str, frame_num: int, db: Session = Depends(get_db)):
 def list_segments(
     video_id: str,
     track_id: int | None = Query(None),
+    role: str | None = Query(None),
     label: int | None = Query(None),
     prediction: int | None = Query(None),
     unlabeled_only: bool = Query(False),
@@ -253,6 +254,17 @@ def list_segments(
 
     if track_id is not None:
         query = query.filter(Segment.track_id == track_id)
+    if role is not None:
+        if role == "player":
+            # Include both 'player' and 'unknown' tracks (exclude only 'non_player')
+            track_ids_with_role = (
+                db.query(Track.id).filter(Track.video_id == video_id, Track.role != "non_player").subquery()
+            )
+        else:
+            track_ids_with_role = (
+                db.query(Track.id).filter(Track.video_id == video_id, Track.role == role).subquery()
+            )
+        query = query.filter(Segment.track_id.in_(track_ids_with_role))
     if label is not None:
         query = query.filter(Segment.human_label == label)
     if prediction is not None:
@@ -317,3 +329,76 @@ def get_track_bboxes(
         }
         for tf in frames
     ]
+
+
+@router.get("/videos/{video_id}/tracks", response_model=list[TrackResponse])
+def list_tracks(video_id: str, role: str | None = Query(None), db: Session = Depends(get_db)):
+    """List all tracks for a video with role info and computed stats."""
+    from spike_platform.services.track_classifier import compute_track_stats
+
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Video not found")
+
+    query = db.query(Track).filter(Track.video_id == video_id)
+    if role is not None:
+        query = query.filter(Track.role == role)
+    tracks = query.order_by(Track.track_id).all()
+
+    video_w = video.width or 1920
+    video_h = video.height or 1080
+
+    result = []
+    for track in tracks:
+        stats = compute_track_stats(track.id, db, video_w, video_h)
+        seg_count = db.query(func.count(Segment.id)).filter(Segment.track_id == track.id).scalar()
+        result.append(TrackResponse(
+            id=track.id,
+            track_id=track.track_id,
+            start_frame=track.start_frame,
+            end_frame=track.end_frame,
+            frame_count=track.frame_count,
+            avg_confidence=track.avg_confidence,
+            role=track.role,
+            role_source=track.role_source,
+            median_bbox_area=stats["median_bbox_area"],
+            median_pose_confidence=stats["median_pose_confidence"],
+            segment_count=seg_count,
+        ))
+
+    return result
+
+
+@router.patch("/videos/{video_id}/tracks/{track_id}/role")
+def update_track_role(
+    video_id: str,
+    track_id: int,
+    update: TrackRoleUpdate,
+    db: Session = Depends(get_db),
+):
+    """Manually set a track's role (player or non_player)."""
+    track = db.query(Track).filter(Track.id == track_id, Track.video_id == video_id).first()
+    if not track:
+        raise HTTPException(404, "Track not found")
+
+    if update.role not in ("player", "non_player"):
+        raise HTTPException(400, "role must be 'player' or 'non_player'")
+
+    track.role = update.role
+    track.role_source = "human"
+    db.commit()
+
+    return {"id": track.id, "role": track.role, "role_source": track.role_source}
+
+
+@router.post("/videos/{video_id}/tracks/reclassify")
+def reclassify_tracks(video_id: str, db: Session = Depends(get_db)):
+    """Re-run heuristic classification on non-human-labeled tracks."""
+    from spike_platform.services.track_classifier import classify_tracks
+
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Video not found")
+
+    counts = classify_tracks(video_id, db)
+    return counts

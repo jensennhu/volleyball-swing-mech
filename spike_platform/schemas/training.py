@@ -39,6 +39,7 @@ class TrainingRunResponse(BaseModel):
     test_f1: Optional[float] = None
     test_auc: Optional[float] = None
     checkpoint_dir: Optional[str] = None
+    notes: Optional[str] = None
     started_at: datetime
     completed_at: Optional[datetime] = None
 

@@ -121,12 +121,14 @@ def run_phase_inference(
 
         scaler = joblib.load(str(checkpoint_dir / "scaler.pkl"))
 
-        # Find all spike segments for this video, grouped by track
+        # Find all spike segments for this video, grouped by track (exclude non-player tracks)
         spike_segments = (
             db.query(Segment)
+            .join(Track, Segment.track_id == Track.id)
             .filter(
                 Segment.video_id == video_id,
                 Segment.human_label == 1,
+                Track.role != "non_player",
             )
             .all()
         )

@@ -30,7 +30,7 @@ const state = {
     // Polling intervals
     _pollInterval: null,
     // Phase annotation state
-    reviewMode: 'spike',   // 'spike' or 'phase'
+    reviewMode: 'spike',   // 'spike' | 'phase' | 'role'
     phaseFrames: [],       // extended frames [{frame_number, bbox}]
     phaseBoundaries: {},   // { approach: frame, jump: frame, swing: frame, land: frame }
     phaseSegmentId: null,  // segment being phase-annotated
@@ -39,6 +39,9 @@ const state = {
     selectedTrackIdx: -1,
     phaseTrackSegments: [], // all spike segment IDs for selected track
     phasePredicted: false,  // true if showing model predictions (not human labels)
+    // Role ID mode
+    roleTracks: [],            // track objects from API
+    selectedRoleTrackIdx: -1,
 };
 
 // ─── Navigation ───────────────────────────────────────────────────
@@ -233,25 +236,34 @@ document.getElementById('review-mode-toggle').addEventListener('click', e => {
     // Toggle UI panels
     document.getElementById('spike-mode-controls').style.display = mode === 'spike' ? '' : 'none';
     document.getElementById('phase-mode-controls').style.display = mode === 'phase' ? '' : 'none';
+    document.getElementById('role-mode-controls').style.display = mode === 'role' ? '' : 'none';
     document.getElementById('phase-annotation-panel').style.display = 'none';
 
     // Reset selection and reload segments for the new mode
     state.selectedSegmentIdx = -1;
     state.selectedTrackIdx = -1;
+    state.selectedRoleTrackIdx = -1;
     state.phaseSegmentId = null;
     state.phaseBoundaries = {};
     state.phaseTrackSegments = [];
+    state.trackBboxes = [];
+    clearBbox();
 
     if (mode === 'phase') {
         // In phase mode, force filter to spike-only
         state.segmentFilter = 'spike';
-    } else {
+    } else if (mode === 'spike') {
         state.segmentFilter = 'all';
         // Re-activate the "All" filter button
         document.querySelectorAll('#segment-filters button').forEach(b => b.classList.remove('active'));
         document.querySelector('#segment-filters button[data-filter="all"]').classList.add('active');
     }
-    loadSegments();
+
+    if (mode === 'role') {
+        loadRoleTracks();
+    } else {
+        loadSegments();
+    }
 });
 
 const reviewVideoSelect = document.getElementById('review-video-select');
@@ -297,7 +309,11 @@ async function openReview(videoId) {
     // Update select
     reviewVideoSelect.value = videoId;
 
-    loadSegments();
+    if (state.reviewMode === 'role') {
+        loadRoleTracks();
+    } else {
+        loadSegments();
+    }
 }
 
 async function loadSegments() {
@@ -312,6 +328,9 @@ async function loadSegments() {
         else if (state.segmentFilter === 'non-spike') filter = '&label=0';
         else if (state.segmentFilter === 'unlabeled') filter = '&unlabeled_only=true';
     }
+
+    // Always filter to player tracks (non-player excluded) in spike/phase modes
+    filter += '&role=player';
 
     const data = await api(`/videos/${state.reviewVideoId}/segments?per_page=200${filter}`);
     state.segments = data.segments;
@@ -527,6 +546,136 @@ async function renderStats() {
     `;
 }
 
+// ─── Role ID Mode ─────────────────────────────────────────────────
+
+async function loadRoleTracks() {
+    if (!state.reviewVideoId) return;
+    try {
+        state.roleTracks = await api(`/videos/${state.reviewVideoId}/tracks`);
+    } catch {
+        state.roleTracks = [];
+    }
+    renderRoleTracks();
+    renderRoleStats();
+}
+
+function renderRoleTracks() {
+    const list = document.getElementById('segment-list');
+    list.innerHTML = '';
+    const bar = document.getElementById('stats-bar');
+    bar.innerHTML = '';
+
+    state.roleTracks.forEach((track, idx) => {
+        const card = document.createElement('div');
+        card.className = 'segment-card' + (idx === state.selectedRoleTrackIdx ? ' selected' : '');
+        card.dataset.idx = idx;
+
+        const startTime = (track.start_frame / state.reviewVideoFps).toFixed(2);
+        const endTime = (track.end_frame / state.reviewVideoFps).toFixed(2);
+
+        const role = track.role || 'unknown';
+        let roleBadgeStyle;
+        if (role === 'player') roleBadgeStyle = 'background:var(--success); color:white;';
+        else if (role === 'non_player') roleBadgeStyle = 'background:var(--danger, #ef4444); color:white;';
+        else roleBadgeStyle = 'background:var(--border); color:var(--text-muted);';
+
+        const sourceLabel = track.role_source === 'human' ? 'human' : track.role_source === 'heuristic' ? 'auto' : '';
+        const sourceBadge = sourceLabel ? `<span class="badge" style="background:var(--surface); color:var(--text-muted); font-size:10px;">${sourceLabel}</span>` : '';
+
+        const bboxArea = track.median_bbox_area != null ? `bbox: ${(track.median_bbox_area * 100).toFixed(1)}%` : '';
+        const poseConf = track.median_pose_confidence != null ? `pose: ${(track.median_pose_confidence * 100).toFixed(0)}%` : '';
+        const statsStr = [bboxArea, poseConf].filter(Boolean).join(' | ');
+
+        card.innerHTML = `
+            <div class="meta">
+                <span>Track ${track.track_id} &middot; ${track.frame_count} frames</span>
+                <span style="display:flex; gap:4px; align-items:center;">
+                    <span class="badge" style="${roleBadgeStyle}">${role.replace('_', '-')}</span>
+                    ${sourceBadge}
+                </span>
+            </div>
+            <div class="seg-fields">
+                <span class="seg-field"><span class="seg-label">${startTime}s - ${endTime}s</span></span>
+                ${statsStr ? `<span class="seg-field"><span class="seg-label" style="font-size:11px; color:var(--text-muted);">${statsStr}</span></span>` : ''}
+                <span class="seg-field"><span class="seg-label">${track.segment_count} segment${track.segment_count !== 1 ? 's' : ''}</span></span>
+            </div>
+            <div class="actions">
+                <button class="btn btn-sm btn-spike" onclick="setTrackRole(${track.id}, 'player', event)">Player</button>
+                <button class="btn btn-sm btn-non-spike" onclick="setTrackRole(${track.id}, 'non_player', event)">Non-player</button>
+            </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            selectRoleTrack(idx);
+        });
+
+        list.appendChild(card);
+    });
+}
+
+function renderRoleStats() {
+    const statsEl = document.getElementById('role-stats');
+    if (!statsEl) return;
+    const counts = { player: 0, non_player: 0, unknown: 0 };
+    for (const t of state.roleTracks) {
+        const role = t.role || 'unknown';
+        counts[role] = (counts[role] || 0) + 1;
+    }
+    statsEl.textContent = `${counts.player + counts.unknown} players, ${counts.non_player} non-players`;
+}
+
+async function selectRoleTrack(idx) {
+    state.selectedRoleTrackIdx = idx;
+    state.trackBboxes = [];
+    clearBbox();
+    renderRoleTracks();
+
+    const track = state.roleTracks[idx];
+    if (!track) return;
+
+    // Seek video to this track's start
+    const videoEl = document.getElementById('review-video');
+    if (videoEl) {
+        videoEl.currentTime = track.start_frame / state.reviewVideoFps;
+    }
+
+    // Load bboxes for the track's full range
+    try {
+        state.trackBboxes = await api(
+            `/videos/${state.reviewVideoId}/tracks/${track.id}/bboxes?start_frame=${track.start_frame}&end_frame=${track.end_frame}`
+        );
+        drawBbox(track.start_frame);
+    } catch { /* ignore */ }
+}
+
+async function setTrackRole(trackId, role, event) {
+    if (event) event.stopPropagation();
+    const currentIdx = state.selectedRoleTrackIdx;
+
+    await api(`/videos/${state.reviewVideoId}/tracks/${trackId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role }),
+    });
+
+    // Update locally
+    const track = state.roleTracks.find(t => t.id === trackId);
+    if (track) {
+        track.role = role;
+        track.role_source = 'human';
+    }
+
+    renderRoleTracks();
+    renderRoleStats();
+
+    // Advance to next track
+    const nextIdx = currentIdx + 1;
+    if (nextIdx < state.roleTracks.length) {
+        selectRoleTrack(nextIdx);
+        scrollSegmentIntoView();
+    }
+}
+
 async function selectTrack(idx) {
     state.selectedTrackIdx = idx;
     state.trackBboxes = [];
@@ -715,7 +864,9 @@ async function savePhases() {
 
     // Build phase list from boundaries
     const phases = [];
-    const sorted = PHASE_NAMES.filter(p => state.phaseBoundaries[p] != null);
+    const sorted = PHASE_NAMES
+        .filter(p => state.phaseBoundaries[p] != null)
+        .sort((a, b) => state.phaseBoundaries[a] - state.phaseBoundaries[b]);
     if (sorted.length === 0) {
         alert('Set at least one phase boundary before saving.');
         return;
@@ -734,7 +885,7 @@ async function savePhases() {
     }
 
     try {
-        await api(`/segments/${state.phaseSegmentId}/phases`, {
+        const saved = await api(`/segments/${state.phaseSegmentId}/phases`, {
             method: 'PUT',
             body: JSON.stringify({ phases }),
         });
@@ -744,7 +895,16 @@ async function savePhases() {
             track.segments.forEach(s => { s._hasPhases = true; });
             track.annotatedCount = track.totalCount;
         }
+        // Reload phase boundaries from the merged track-level response
+        state.phasePredicted = false;
+        state.phaseBoundaries = {};
+        if (saved && saved.length > 0) {
+            for (const p of saved) {
+                state.phaseBoundaries[p.phase] = p.start_frame;
+            }
+        }
         renderSegments();
+        renderPhaseTimeline();
         // Show inline confirmation
         showSaveConfirmation();
     } catch (e) {
@@ -819,6 +979,13 @@ if (_reviewVideo) {
     });
 }
 
+// Reclassify tracks button
+document.getElementById('reclassify-btn').addEventListener('click', async () => {
+    if (!state.reviewVideoId) return;
+    await api(`/videos/${state.reviewVideoId}/tracks/reclassify`, { method: 'POST' });
+    loadRoleTracks();
+});
+
 // Segment filters
 document.getElementById('segment-filters').addEventListener('click', e => {
     if (e.target.tagName !== 'BUTTON') return;
@@ -835,6 +1002,36 @@ document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
     const seg = state.segments[state.selectedSegmentIdx];
+
+    if (state.reviewMode === 'role') {
+        // Role ID mode shortcuts
+        const track = state.roleTracks[state.selectedRoleTrackIdx];
+        switch (e.key) {
+            case 'p':
+            case 'P':
+                if (track) setTrackRole(track.id, 'player');
+                break;
+            case 'x':
+            case 'X':
+                if (track) setTrackRole(track.id, 'non_player');
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                if (state.selectedRoleTrackIdx < state.roleTracks.length - 1) {
+                    selectRoleTrack(state.selectedRoleTrackIdx + 1);
+                    scrollSegmentIntoView();
+                }
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                if (state.selectedRoleTrackIdx > 0) {
+                    selectRoleTrack(state.selectedRoleTrackIdx - 1);
+                    scrollSegmentIntoView();
+                }
+                break;
+        }
+        return;
+    }
 
     if (state.reviewMode === 'phase') {
         // Phase mode shortcuts

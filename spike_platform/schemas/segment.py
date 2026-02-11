@@ -35,3 +35,23 @@ class BulkLabelUpdate(BaseModel):
 class SegmentListResponse(BaseModel):
     segments: list[SegmentResponse]
     total: int
+
+
+class TrackResponse(BaseModel):
+    id: int
+    track_id: int
+    start_frame: int
+    end_frame: int
+    frame_count: int
+    avg_confidence: Optional[float] = None
+    role: Optional[str] = None
+    role_source: Optional[str] = None
+    median_bbox_area: Optional[float] = None
+    median_pose_confidence: Optional[float] = None
+    segment_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class TrackRoleUpdate(BaseModel):
+    role: str  # player|non_player

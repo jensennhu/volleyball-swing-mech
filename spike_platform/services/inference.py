@@ -10,7 +10,7 @@ import torch
 
 from spike_platform.config import settings
 from spike_platform.database import SessionLocal
-from spike_platform.models.db_models import Segment, TrainingRun
+from spike_platform.models.db_models import Segment, Track, TrainingRun
 from spike_platform.ml.trainer import SpikeTrainer
 
 
@@ -48,10 +48,12 @@ def run_inference_on_video(
         trainer = SpikeTrainer.load_checkpoint(run.checkpoint_dir)
         trainer.model.eval()
 
-        # Get all segments for this video
+        # Get all segments for this video (exclude non-player tracks)
         segments = (
             db.query(Segment)
+            .join(Track, Segment.track_id == Track.id)
             .filter(Segment.video_id == video_id)
+            .filter(Track.role != "non_player")
             .all()
         )
 

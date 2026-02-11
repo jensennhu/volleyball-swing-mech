@@ -23,8 +23,8 @@ from spike_platform.services.reid import ReIDEncoder
 from spike_platform.services.track_postprocess import (
     detect_id_switches,
     extract_track_embeddings,
-    merge_fragmented_tracks,
 )
+from spike_platform.services.track_classifier import classify_tracks
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +73,12 @@ def process_video_pipeline(
             ),
         )
 
-        # Post-process: extract ReID embeddings, then fix ID switches and merge fragments
+        # Post-process: extract ReID embeddings and split tracks at ID switches
         if progress_callback:
             progress_callback(40.0, "Extracting appearance embeddings for tracks...")
         encoder = ReIDEncoder()
         embeddings = extract_track_embeddings(video.filepath, track_results, encoder)
         track_results = detect_id_switches(track_results, embeddings)
-        track_results = merge_fragmented_tracks(track_results, embeddings)
 
         # Filter to tracks with enough frames
         long_tracks = [t for t in track_results if t.frame_count >= settings.MIN_TRACK_FRAMES]
@@ -172,7 +171,14 @@ def process_video_pipeline(
         cap.release()
         pose_service.close()
 
-        logger.info(f"[{video_id[:8]}] Pose extraction done. Creating segments...")
+        logger.info(f"[{video_id[:8]}] Pose extraction done. Classifying tracks...")
+
+        # Step 2.5: Classify tracks as player/non_player
+        role_counts = classify_tracks(video_id, db)
+        logger.info(
+            f"[{video_id[:8]}] Track roles: {role_counts['player']} players, "
+            f"{role_counts['non_player']} non-players"
+        )
 
         if progress_callback:
             progress_callback(75.0, f"Creating segments for {len(db_tracks)} tracks...")

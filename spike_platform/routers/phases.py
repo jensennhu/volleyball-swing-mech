@@ -241,13 +241,12 @@ def set_segment_phases(
     phase_min = min(p.start_frame for p in request.phases)
     phase_max = max(p.end_frame for p in request.phases)
 
-    new_phases = []
     for sib in sibling_segments:
-        # Check if this segment overlaps with the annotated phase range
+        # Only touch segments that overlap with the annotated phase range
         if sib.end_frame < phase_min or sib.start_frame > phase_max:
             continue
 
-        # Delete existing phase labels for this segment
+        # Delete existing phase labels (both human and predicted) for this segment
         db.query(SegmentPhase).filter(SegmentPhase.segment_id == sib.id).delete()
 
         # Clip and insert phases that overlap with this segment's frame range
@@ -264,17 +263,11 @@ def set_segment_phases(
                 human_label=p.phase,
             )
             db.add(phase)
-            new_phases.append(phase)
 
     db.commit()
-    # Return only phases for the requested segment
-    result = (
-        db.query(SegmentPhase)
-        .filter(SegmentPhase.segment_id == segment_id)
-        .order_by(SegmentPhase.start_frame)
-        .all()
-    )
-    return result
+
+    # Return merged track-level phases (same logic as get_track_phases)
+    return get_track_phases(segment_id, db)
 
 
 @router.delete("/segments/{segment_id}/phases")
