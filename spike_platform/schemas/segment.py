@@ -48,6 +48,10 @@ class TrackResponse(BaseModel):
     role_source: Optional[str] = None
     median_bbox_area: Optional[float] = None
     median_pose_confidence: Optional[float] = None
+    movement_variance: Optional[float] = None
+    bbox_aspect_ratio: Optional[float] = None
+    track_duration_ratio: Optional[float] = None
+    vertical_range: Optional[float] = None
     segment_count: int = 0
 
     model_config = {"from_attributes": True}

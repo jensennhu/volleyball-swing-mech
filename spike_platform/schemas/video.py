@@ -15,6 +15,7 @@ class VideoResponse(BaseModel):
     duration_seconds: Optional[float] = None
     status: str
     error_message: Optional[str] = None
+    video_group: Optional[str] = None
     track_count: int = 0
     segment_count: int = 0
     labeled_count: int = 0
@@ -22,6 +23,10 @@ class VideoResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class VideoGroupUpdate(BaseModel):
+    video_group: Optional[str] = None
 
 
 class VideoStatusResponse(BaseModel):

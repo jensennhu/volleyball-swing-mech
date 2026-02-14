@@ -44,3 +44,18 @@ def init_db():
     # Import models so they register with Base.metadata
     import spike_platform.models.db_models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Migrate existing DBs: add columns that may not exist yet
+    with engine.connect() as conn:
+        for table, column, col_type in [
+            ("videos", "video_group", "TEXT"),
+        ]:
+            try:
+                conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                    )
+                )
+                conn.commit()
+            except Exception:
+                pass  # column already exists

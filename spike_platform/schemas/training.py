@@ -6,7 +6,7 @@ from typing import Optional
 
 
 class TrainingConfig(BaseModel):
-    task_type: str = "spike_detection"  # spike_detection|phase_classification
+    task_type: str = "spike_detection"  # spike_detection|phase_classification|role_classification
     epochs: int = 100
     batch_size: int = 16
     learning_rate: float = 0.001
@@ -104,3 +104,46 @@ class PhaseLabelResponse(BaseModel):
 class FrameResponse(BaseModel):
     frame_number: int
     bbox: list[float]  # [x1, y1, x2, y2]
+
+
+# ─── Group Metrics Schemas ────────────────────────────────────────
+
+class CalibrationBucket(BaseModel):
+    bin_start: float
+    bin_end: float
+    count: int
+    actual_positive_rate: Optional[float] = None
+
+
+class VideoMetrics(BaseModel):
+    video_id: str
+    filename: str
+    n_samples: int
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1: Optional[float] = None
+
+
+class GroupMetrics(BaseModel):
+    group_name: str
+    total: int
+    spike_count: int
+    non_spike_count: int
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+    precision: float
+    recall: float
+    f1: float
+    fpr: float
+    fnr: float
+    calibration: list[CalibrationBucket]
+    per_video: list[VideoMetrics]
+    f1_mean: float
+    f1_std: float
+
+
+class GroupMetricsResponse(BaseModel):
+    training_run_id: int
+    groups: list[GroupMetrics]

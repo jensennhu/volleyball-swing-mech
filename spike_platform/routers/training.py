@@ -2,13 +2,13 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from spike_platform.config import settings
 from spike_platform.database import get_db
-from spike_platform.models.db_models import Segment, SegmentPhase, TrainingRun
+from spike_platform.models.db_models import Segment, SegmentPhase, Track, TrainingRun
 from spike_platform.schemas.training import (
     TrainingConfig,
     TrainingRunResponse,
@@ -17,6 +17,7 @@ from spike_platform.schemas.training import (
     InferenceResponse,
     InferenceStatsResponse,
     PhaseInferenceRequest,
+    GroupMetricsResponse,
 )
 from spike_platform.worker import worker
 
@@ -26,8 +27,9 @@ router = APIRouter()
 @router.post("/training/start", response_model=TrainingRunResponse)
 def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
     """Start a training run using all labeled segments."""
-    if config.task_type not in ("spike_detection", "phase_classification"):
-        raise HTTPException(400, "task_type must be spike_detection or phase_classification")
+    valid_types = ("spike_detection", "phase_classification", "role_classification")
+    if config.task_type not in valid_types:
+        raise HTTPException(400, f"task_type must be one of {valid_types}")
 
     # Check we have enough labeled data
     if config.task_type == "spike_detection":
@@ -41,8 +43,7 @@ def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
                 400,
                 f"Need at least 10 labeled segments to train, have {labeled_count}",
             )
-    else:
-        # Phase classification: count segments with phase annotations
+    elif config.task_type == "phase_classification":
         labeled_count = (
             db.query(func.count(func.distinct(SegmentPhase.segment_id)))
             .filter(SegmentPhase.human_label.isnot(None))
@@ -52,6 +53,17 @@ def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
             raise HTTPException(
                 400,
                 f"Need at least 5 phase-annotated segments to train, have {labeled_count}",
+            )
+    else:  # role_classification
+        labeled_count = (
+            db.query(func.count(Track.id))
+            .filter(Track.role_source == "human")
+            .scalar()
+        )
+        if labeled_count < 20:
+            raise HTTPException(
+                400,
+                f"Need at least 20 human-labeled tracks to train role classifier, have {labeled_count}",
             )
 
     if worker.is_busy:
@@ -75,9 +87,12 @@ def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
     if config.task_type == "spike_detection":
         from spike_platform.services.training import run_training
         worker.submit(run_training, training_run_id=run.id)
-    else:
+    elif config.task_type == "phase_classification":
         from spike_platform.services.phase_training import run_phase_training
         worker.submit(run_phase_training, training_run_id=run.id)
+    else:
+        from spike_platform.services.track_classifier import train_role_classifier
+        worker.submit(train_role_classifier, training_run_id=run.id)
 
     return run
 
@@ -114,6 +129,17 @@ def get_training_status(run_id: int, db: Session = Depends(get_db)):
         train_loss=run.train_loss,
         val_loss=run.val_loss,
     )
+
+
+@router.get("/training/group-metrics", response_model=GroupMetricsResponse)
+def get_group_metrics(
+    training_run_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Compute per-video-group metrics for a training run's predictions."""
+    from spike_platform.services.group_metrics import compute_group_metrics
+
+    return compute_group_metrics(training_run_id, db)
 
 
 @router.post("/inference/run", response_model=InferenceResponse)

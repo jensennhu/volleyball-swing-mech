@@ -1,0 +1,19 @@
+{
+  "model_type": "role_classifier",
+  "algorithm": "RandomForestClassifier",
+  "n_estimators": 100,
+  "feature_names": [
+    "median_bbox_area",
+    "median_pose_confidence",
+    "median_y_position",
+    "movement_variance",
+    "bbox_aspect_ratio",
+    "track_duration_ratio",
+    "vertical_range"
+  ],
+  "n_samples": 531,
+  "n_players": 201,
+  "n_non_players": 330,
+  "cv_folds": 5,
+  "saved_at": "2026-02-12T18:18:55.378305+00:00"
+}

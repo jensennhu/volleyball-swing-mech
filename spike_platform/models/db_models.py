@@ -28,6 +28,7 @@ class Video(Base):
     duration_seconds = Column(Float, nullable=True)
     status = Column(String, nullable=False, default="uploaded")  # uploaded|processing|processed|predicted|error
     error_message = Column(Text, nullable=True)
+    video_group = Column(String, nullable=True)  # e.g. "hitting_lines", "game_play"
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 

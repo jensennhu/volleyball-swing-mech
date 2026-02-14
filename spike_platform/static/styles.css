@@ -461,3 +461,64 @@ tr.best-run td { background: rgba(34, 197, 94, 0.08); }
     transition: width 0.5s;
     width: 0%;
 }
+
+/* Group Analysis */
+.group-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.confusion-matrix {
+    display: grid;
+    grid-template-columns: auto 56px 56px;
+    gap: 2px;
+    font-size: 12px;
+}
+
+.cm-header {
+    padding: 4px 6px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.cm-cell {
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 700;
+    border-radius: 3px;
+}
+
+.cm-tp { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+.cm-tn { background: rgba(34, 197, 94, 0.10); color: var(--success); }
+.cm-fp { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.cm-fn { background: rgba(239, 68, 68, 0.10); color: var(--danger); }
+
+.metric-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.metric-badge small {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.metric-badge.metric-good { background: rgba(34, 197, 94, 0.10); color: var(--text); }
+.metric-badge.metric-bad { background: rgba(239, 68, 68, 0.10); color: var(--text); }
+
+.video-group-select {
+    font-size: 12px;
+}

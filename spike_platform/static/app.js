@@ -40,8 +40,10 @@ const state = {
     phaseTrackSegments: [], // all spike segment IDs for selected track
     phasePredicted: false,  // true if showing model predictions (not human labels)
     // Role ID mode
-    roleTracks: [],            // track objects from API
+    roleTracks: [],            // track objects from API (all)
+    filteredRoleTracks: [],    // after role filter applied
     selectedRoleTrackIdx: -1,
+    roleFilter: 'all',         // 'all' | 'player' | 'non_player' | 'unknown'
 };
 
 // ─── Navigation ───────────────────────────────────────────────────
@@ -59,7 +61,7 @@ function switchView(view) {
 
     if (view === 'videos') loadVideos();
     if (view === 'review') loadReviewVideoList();
-    if (view === 'training') { loadTrainingRuns(); loadLabelStats(); }
+    if (view === 'training') { loadTrainingRuns(); loadLabelStats(); loadGroupMetricsRunSelector(); }
 }
 
 // ─── API Helpers ──────────────────────────────────────────────────
@@ -151,9 +153,23 @@ async function loadVideos() {
     const tbody = document.getElementById('video-table-body');
     tbody.innerHTML = '';
 
+    const VIDEO_GROUPS = ['hitting_lines', 'game_play', 'scrimmage'];
+
     for (const v of videos) {
         const tr = document.createElement('tr');
         const duration = v.duration_seconds ? `${Math.round(v.duration_seconds)}s` : '-';
+
+        // Build group dropdown
+        let groupOptions = '<option value="">—</option>';
+        for (const g of VIDEO_GROUPS) {
+            groupOptions += `<option value="${g}" ${v.video_group === g ? 'selected' : ''}>${g.replace(/_/g, ' ')}</option>`;
+        }
+        // If current group is custom (not in predefined list), add it
+        if (v.video_group && !VIDEO_GROUPS.includes(v.video_group)) {
+            groupOptions += `<option value="${esc(v.video_group)}" selected>${esc(v.video_group)}</option>`;
+        }
+        groupOptions += '<option value="__custom__">Custom...</option>';
+
         tr.innerHTML = `
             <td>${esc(v.filename)}</td>
             <td>${duration}</td>
@@ -165,6 +181,11 @@ async function loadVideos() {
                         <div class="progress-text" style="font-size:11px; color:var(--text-muted); margin-top:2px;"></div>
                     </div>
                 ` : ''}
+            </td>
+            <td>
+                <select class="video-group-select" data-video-id="${v.id}" style="padding:4px 6px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); font-size:12px; max-width:120px;">
+                    ${groupOptions}
+                </select>
             </td>
             <td>${v.track_count}</td>
             <td>${v.segment_count}</td>
@@ -182,6 +203,27 @@ async function loadVideos() {
             startPolling(v.id);
         }
     }
+
+    // Wire up group dropdowns
+    tbody.querySelectorAll('.video-group-select').forEach(sel => {
+        sel.addEventListener('change', async () => {
+            const videoId = sel.dataset.videoId;
+            let group = sel.value;
+            if (group === '__custom__') {
+                group = prompt('Enter custom group name:');
+                if (!group) { sel.value = ''; return; }
+            }
+            try {
+                await api(`/videos/${videoId}/group`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ video_group: group || null }),
+                });
+            } catch (e) {
+                alert('Failed to set group: ' + e.message);
+                loadVideos();
+            }
+        });
+    });
 }
 
 async function reprocessVideo(id) {
@@ -555,8 +597,18 @@ async function loadRoleTracks() {
     } catch {
         state.roleTracks = [];
     }
+    applyRoleFilter();
     renderRoleTracks();
     renderRoleStats();
+}
+
+function applyRoleFilter() {
+    if (state.roleFilter === 'all') {
+        state.filteredRoleTracks = state.roleTracks;
+    } else {
+        state.filteredRoleTracks = state.roleTracks.filter(t => (t.role || 'unknown') === state.roleFilter);
+    }
+    state.selectedRoleTrackIdx = -1;
 }
 
 function renderRoleTracks() {
@@ -565,7 +617,7 @@ function renderRoleTracks() {
     const bar = document.getElementById('stats-bar');
     bar.innerHTML = '';
 
-    state.roleTracks.forEach((track, idx) => {
+    state.filteredRoleTracks.forEach((track, idx) => {
         const card = document.createElement('div');
         card.className = 'segment-card' + (idx === state.selectedRoleTrackIdx ? ' selected' : '');
         card.dataset.idx = idx;
@@ -579,12 +631,14 @@ function renderRoleTracks() {
         else if (role === 'non_player') roleBadgeStyle = 'background:var(--danger, #ef4444); color:white;';
         else roleBadgeStyle = 'background:var(--border); color:var(--text-muted);';
 
-        const sourceLabel = track.role_source === 'human' ? 'human' : track.role_source === 'heuristic' ? 'auto' : '';
+        const sourceLabel = track.role_source === 'human' ? 'human' : track.role_source === 'model' ? 'model' : track.role_source === 'heuristic' ? 'auto' : '';
         const sourceBadge = sourceLabel ? `<span class="badge" style="background:var(--surface); color:var(--text-muted); font-size:10px;">${sourceLabel}</span>` : '';
 
         const bboxArea = track.median_bbox_area != null ? `bbox: ${(track.median_bbox_area * 100).toFixed(1)}%` : '';
         const poseConf = track.median_pose_confidence != null ? `pose: ${(track.median_pose_confidence * 100).toFixed(0)}%` : '';
-        const statsStr = [bboxArea, poseConf].filter(Boolean).join(' | ');
+        const moveVar = track.movement_variance != null ? `move: ${track.movement_variance.toFixed(4)}` : '';
+        const vertRange = track.vertical_range != null ? `vert: ${(track.vertical_range * 100).toFixed(1)}%` : '';
+        const statsStr = [bboxArea, poseConf, moveVar, vertRange].filter(Boolean).join(' | ');
 
         card.innerHTML = `
             <div class="meta">
@@ -618,11 +672,17 @@ function renderRoleStats() {
     const statsEl = document.getElementById('role-stats');
     if (!statsEl) return;
     const counts = { player: 0, non_player: 0, unknown: 0 };
+    let humanCount = 0;
     for (const t of state.roleTracks) {
         const role = t.role || 'unknown';
         counts[role] = (counts[role] || 0) + 1;
+        if (t.role_source === 'human') humanCount++;
     }
-    statsEl.textContent = `${counts.player + counts.unknown} players, ${counts.non_player} non-players`;
+    const showing = state.filteredRoleTracks.length;
+    const total = state.roleTracks.length;
+    const hasModel = state.roleTracks.some(t => t.role_source === 'model');
+    const modelTag = hasModel ? ' [ML]' : '';
+    statsEl.textContent = `${counts.player}P / ${counts.non_player}NP / ${counts.unknown}? (${showing}/${total}) | ${humanCount} human labels${modelTag}`;
 }
 
 async function selectRoleTrack(idx) {
@@ -631,7 +691,7 @@ async function selectRoleTrack(idx) {
     clearBbox();
     renderRoleTracks();
 
-    const track = state.roleTracks[idx];
+    const track = state.filteredRoleTracks[idx];
     if (!track) return;
 
     // Seek video to this track's start
@@ -665,12 +725,13 @@ async function setTrackRole(trackId, role, event) {
         track.role_source = 'human';
     }
 
+    applyRoleFilter();
     renderRoleTracks();
     renderRoleStats();
 
-    // Advance to next track
-    const nextIdx = currentIdx + 1;
-    if (nextIdx < state.roleTracks.length) {
+    // Advance to next track (index may shift after filter re-apply)
+    const nextIdx = Math.min(currentIdx, state.filteredRoleTracks.length - 1);
+    if (nextIdx >= 0) {
         selectRoleTrack(nextIdx);
         scrollSegmentIntoView();
     }
@@ -979,11 +1040,72 @@ if (_reviewVideo) {
     });
 }
 
-// Reclassify tracks button
+// Role filter buttons
+document.getElementById('role-filter-buttons').addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('#role-filter-buttons button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    state.roleFilter = e.target.dataset.roleFilter;
+    applyRoleFilter();
+    renderRoleTracks();
+});
+
+// Reclassify tracks button (uses ML model if available, else heuristic)
 document.getElementById('reclassify-btn').addEventListener('click', async () => {
     if (!state.reviewVideoId) return;
-    await api(`/videos/${state.reviewVideoId}/tracks/reclassify`, { method: 'POST' });
-    loadRoleTracks();
+    try {
+        const result = await api(`/videos/${state.reviewVideoId}/tracks/reclassify`, { method: 'POST' });
+        const method = result.method === 'ml' ? ' (ML model)' : ' (heuristic)';
+        loadRoleTracks();
+    } catch (e) {
+        alert('Reclassify failed: ' + e.message);
+    }
+});
+
+// Train role model button
+document.getElementById('train-role-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('train-role-btn');
+    btn.disabled = true;
+    btn.textContent = 'Training...';
+    try {
+        const run = await api('/training/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                task_type: 'role_classification',
+                epochs: 1,
+                learning_rate: 0.001,
+                batch_size: 16,
+                dropout: 0.0,
+                lstm_units: [64, 32],
+            }),
+        });
+        // Poll for completion (role training is fast)
+        const pollInterval = setInterval(async () => {
+            try {
+                const status = await api(`/training/runs/${run.id}`);
+                if (status.status === 'completed') {
+                    clearInterval(pollInterval);
+                    btn.disabled = false;
+                    btn.textContent = 'Train Role Model';
+                    const f1 = status.test_f1 != null ? ` CV F1: ${(status.test_f1 * 100).toFixed(1)}%` : '';
+                    alert(`Role model trained!${f1}`);
+                } else if (status.status === 'failed') {
+                    clearInterval(pollInterval);
+                    btn.disabled = false;
+                    btn.textContent = 'Train Role Model';
+                    alert('Training failed: ' + (status.notes || 'Not enough labeled tracks (need 20+)'));
+                }
+            } catch {
+                clearInterval(pollInterval);
+                btn.disabled = false;
+                btn.textContent = 'Train Role Model';
+            }
+        }, 1000);
+    } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Train Role Model';
+        alert('Failed: ' + e.message);
+    }
 });
 
 // Segment filters
@@ -1005,7 +1127,7 @@ document.addEventListener('keydown', e => {
 
     if (state.reviewMode === 'role') {
         // Role ID mode shortcuts
-        const track = state.roleTracks[state.selectedRoleTrackIdx];
+        const track = state.filteredRoleTracks[state.selectedRoleTrackIdx];
         switch (e.key) {
             case 'p':
             case 'P':
@@ -1017,7 +1139,7 @@ document.addEventListener('keydown', e => {
                 break;
             case 'ArrowDown':
                 e.preventDefault();
-                if (state.selectedRoleTrackIdx < state.roleTracks.length - 1) {
+                if (state.selectedRoleTrackIdx < state.filteredRoleTracks.length - 1) {
                     selectRoleTrack(state.selectedRoleTrackIdx + 1);
                     scrollSegmentIntoView();
                 }
@@ -1189,9 +1311,13 @@ async function loadTrainingRuns() {
 
             if (isBest) tr.classList.add('best-run');
 
-            const inferBtn = taskType === 'phase_classification'
-                ? `<button class="btn btn-sm btn-outline" onclick="rerunPhaseInference(${r.id})">Phase Infer</button>`
-                : `<button class="btn btn-sm btn-outline" onclick="rerunInference(${r.id})">Re-infer</button>`;
+            let inferBtn = '';
+            if (taskType === 'phase_classification') {
+                inferBtn = `<button class="btn btn-sm btn-outline" onclick="rerunPhaseInference(${r.id})">Phase Infer</button>`;
+            } else if (taskType === 'spike_detection') {
+                inferBtn = `<button class="btn btn-sm btn-outline" onclick="rerunInference(${r.id})">Re-infer</button>`;
+            }
+            // role_classification runs don't have a re-infer action (use Reclassify in Role ID tab instead)
 
             tr.innerHTML = `
                 <td>#${r.id}${isBest ? ' <span style="color:var(--success); font-size:11px;">best</span>' : ''}</td>
@@ -1310,41 +1436,121 @@ function renderMetricsChart(runs) {
     });
 }
 
-async function rerunInference(runId) {
-    // Re-run on all videos
+async function showInferenceVideoPicker(runId, mode) {
     const videos = await api('/videos');
-    for (const v of videos) {
-        if (v.status === 'processed' || v.status === 'predicted') {
-            await api('/inference/run', {
-                method: 'POST',
-                body: JSON.stringify({ video_id: v.id, training_run_id: runId }),
-            });
-        }
+    const eligible = videos.filter(v => v.status === 'processed' || v.status === 'predicted');
+
+    if (eligible.length === 0) {
+        alert('No videos available for inference.');
+        return;
     }
-    alert('Inference started. Predictions will update shortly.');
+
+    // Remove existing picker if any
+    document.getElementById('inference-picker-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'inference-picker-overlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:1000;';
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; min-width:320px; max-width:480px;';
+
+    const title = mode === 'phase' ? 'Run Phase Inference' : 'Run Spike Inference';
+    let html = `<h3 style="margin:0 0 12px; font-size:14px;">${title}</h3>`;
+    html += `<p style="font-size:13px; color:var(--text-muted); margin:0 0 12px;">Select video(s) to run inference on with run #${runId}:</p>`;
+    html += `<div style="margin-bottom:8px;"><button class="btn btn-sm btn-outline" id="infer-toggle-all">Deselect All</button></div>`;
+    html += `<div id="infer-video-list" style="display:flex; flex-direction:column; gap:6px; max-height:300px; overflow-y:auto;">`;
+    for (const v of eligible) {
+        html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" value="${v.id}" checked style="accent-color:var(--primary);">
+            <span>${esc(v.filename)}</span>
+            <span style="color:var(--text-muted); font-size:11px;">(${v.segment_count} seg)</span>
+        </label>`;
+    }
+    html += `</div>`;
+    html += `<div style="display:flex; gap:8px; margin-top:16px; justify-content:flex-end;">`;
+    html += `<button class="btn btn-sm btn-outline" id="infer-cancel-btn">Cancel</button>`;
+    html += `<button class="btn btn-sm btn-primary" id="infer-run-btn">Run</button>`;
+    html += `</div>`;
+
+    dialog.innerHTML = html;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // Close on overlay click (not dialog)
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('infer-cancel-btn').addEventListener('click', () => overlay.remove());
+
+    // Toggle all checkboxes
+    document.getElementById('infer-toggle-all').addEventListener('click', () => {
+        const checkboxes = dialog.querySelectorAll('#infer-video-list input[type="checkbox"]');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+        document.getElementById('infer-toggle-all').textContent = allChecked ? 'Select All' : 'Deselect All';
+    });
+
+    document.getElementById('infer-run-btn').addEventListener('click', async () => {
+        const checked = dialog.querySelectorAll('input[type="checkbox"]:checked');
+        const videoIds = Array.from(checked).map(cb => cb.value);
+        overlay.remove();
+
+        if (videoIds.length === 0) {
+            alert('No videos selected.');
+            return;
+        }
+
+        if (mode === 'phase') {
+            await runPhaseInferenceOnVideos(runId, videoIds);
+        } else {
+            await runSpikeInferenceOnVideos(runId, videoIds);
+        }
+    });
 }
 
-async function rerunPhaseInference(runId) {
-    const videos = await api('/videos');
+async function runSpikeInferenceOnVideos(runId, videoIds) {
     let count = 0;
-    for (const v of videos) {
-        if (v.status === 'processed' || v.status === 'predicted') {
-            try {
-                await api('/inference/phase-run', {
-                    method: 'POST',
-                    body: JSON.stringify({ video_id: v.id, training_run_id: runId }),
-                });
-                count++;
-            } catch (e) {
-                if (e.message.includes('already running')) {
-                    // Wait and retry — worker processes one at a time
-                    alert(`Phase inference started for ${count} video(s). Worker is busy — remaining videos will need to be run separately.`);
-                    return;
-                }
+    for (const vid of videoIds) {
+        try {
+            await api('/inference/run', {
+                method: 'POST',
+                body: JSON.stringify({ video_id: vid, training_run_id: runId }),
+            });
+            count++;
+        } catch (e) {
+            if (e.message.includes('already running')) {
+                alert(`Inference started for ${count} video(s). Worker is busy — remaining videos will need to be run separately.`);
+                return;
+            }
+        }
+    }
+    alert(`Inference started for ${count} video(s). Predictions will update shortly.`);
+}
+
+async function runPhaseInferenceOnVideos(runId, videoIds) {
+    let count = 0;
+    for (const vid of videoIds) {
+        try {
+            await api('/inference/phase-run', {
+                method: 'POST',
+                body: JSON.stringify({ video_id: vid, training_run_id: runId }),
+            });
+            count++;
+        } catch (e) {
+            if (e.message.includes('already running')) {
+                alert(`Phase inference started for ${count} video(s). Worker is busy — remaining videos will need to be run separately.`);
+                return;
             }
         }
     }
     alert(`Phase inference started for ${count} video(s). Predictions will appear in Phase Annotation mode.`);
+}
+
+async function rerunInference(runId) {
+    showInferenceVideoPicker(runId, 'spike');
+}
+
+async function rerunPhaseInference(runId) {
+    showInferenceVideoPicker(runId, 'phase');
 }
 
 async function loadLabelStats() {
@@ -1358,6 +1564,187 @@ async function loadLabelStats() {
             <span>Unlabeled: <strong>${stats.unlabeled}</strong></span>
         `;
     } catch { /* ignore on initial load */ }
+}
+
+// ─── Group Metrics ────────────────────────────────────────────────
+
+const _groupCalibrationCharts = [];
+
+async function loadGroupMetricsRunSelector() {
+    const select = document.getElementById('group-metrics-run-select');
+    if (!select) return;
+    try {
+        const runs = await api('/training/runs?task_type=spike_detection');
+        const completed = runs.filter(r => r.status === 'completed');
+        select.innerHTML = '<option value="">Select a training run...</option>';
+        for (const r of completed) {
+            const f1 = r.test_f1 != null ? ` (F1: ${(r.test_f1 * 100).toFixed(1)}%)` : '';
+            select.innerHTML += `<option value="${r.id}">#${r.id}${f1}</option>`;
+        }
+    } catch { /* ignore */ }
+}
+
+document.getElementById('group-metrics-run-select')?.addEventListener('change', e => {
+    const runId = e.target.value;
+    if (runId) loadGroupMetrics(parseInt(runId));
+});
+
+async function loadGroupMetrics(runId) {
+    const container = document.getElementById('group-metrics-container');
+    if (!container) return;
+    container.innerHTML = '<span style="color:var(--text-muted);">Loading...</span>';
+
+    // Destroy old calibration charts
+    _groupCalibrationCharts.forEach(c => c.destroy());
+    _groupCalibrationCharts.length = 0;
+
+    try {
+        const data = await api(`/training/group-metrics?training_run_id=${runId}`);
+        if (!data.groups || data.groups.length === 0) {
+            container.innerHTML = '<span style="color:var(--text-muted);">No segments with both predictions and labels found for this run.</span>';
+            return;
+        }
+        container.innerHTML = '';
+        for (const group of data.groups) {
+            container.appendChild(renderGroupCard(group));
+        }
+    } catch (e) {
+        container.innerHTML = `<span style="color:var(--danger, #ef4444);">Error: ${esc(e.message)}</span>`;
+    }
+}
+
+function renderGroupCard(group) {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+
+    const isOverall = group.group_name === 'overall';
+    const titleStyle = isOverall ? 'font-weight:700;' : '';
+
+    let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span style="font-size:14px; ${titleStyle}">${esc(group.group_name.replace(/_/g, ' '))}${isOverall ? ' (all groups)' : ''}</span>
+        <span style="font-size:12px; color:var(--text-muted);">${group.total} samples (${group.spike_count}S / ${group.non_spike_count}NS)</span>
+    </div>`;
+
+    // Metrics row
+    html += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <span class="metric-badge metric-good">${(group.precision * 100).toFixed(1)}% <small>Prec</small></span>
+        <span class="metric-badge metric-good">${(group.recall * 100).toFixed(1)}% <small>Recall</small></span>
+        <span class="metric-badge metric-good">${(group.f1 * 100).toFixed(1)}% <small>F1</small></span>
+        <span class="metric-badge metric-bad">${(group.fpr * 100).toFixed(1)}% <small>FPR</small></span>
+        <span class="metric-badge metric-bad">${(group.fnr * 100).toFixed(1)}% <small>FNR</small></span>
+    </div>`;
+
+    // Confusion matrix
+    html += `<div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">`;
+    html += `<div>
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Confusion Matrix</div>
+        <div class="confusion-matrix">
+            <div class="cm-header"></div>
+            <div class="cm-header">Pred S</div>
+            <div class="cm-header">Pred NS</div>
+            <div class="cm-header">True S</div>
+            <div class="cm-cell cm-tp">${group.tp}</div>
+            <div class="cm-cell cm-fn">${group.fn}</div>
+            <div class="cm-header">True NS</div>
+            <div class="cm-cell cm-fp">${group.fp}</div>
+            <div class="cm-cell cm-tn">${group.tn}</div>
+        </div>
+    </div>`;
+
+    // Calibration chart placeholder
+    const chartId = `cal-chart-${group.group_name.replace(/\W/g, '_')}-${Date.now()}`;
+    html += `<div style="flex:1; min-width:200px; max-width:320px;">
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Calibration Curve</div>
+        <div style="height:160px;"><canvas id="${chartId}"></canvas></div>
+    </div>`;
+
+    html += `</div>`;
+
+    // Per-video breakdown
+    if (group.per_video && group.per_video.length > 0) {
+        html += `<div style="margin-top:12px;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Per-Video F1 (mean: ${(group.f1_mean * 100).toFixed(1)}% &plusmn; ${(group.f1_std * 100).toFixed(1)}%)</div>
+            <table style="width:100%; font-size:12px;">
+                <thead><tr><th style="text-align:left;">Video</th><th>N</th><th>Prec</th><th>Recall</th><th>F1</th></tr></thead>
+                <tbody>`;
+        for (const v of group.per_video) {
+            html += `<tr>
+                <td style="text-align:left; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(v.filename)}</td>
+                <td>${v.n_samples}</td>
+                <td>${v.precision != null ? (v.precision * 100).toFixed(1) + '%' : '-'}</td>
+                <td>${v.recall != null ? (v.recall * 100).toFixed(1) + '%' : '-'}</td>
+                <td>${v.f1 != null ? (v.f1 * 100).toFixed(1) + '%' : '-'}</td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+    }
+
+    card.innerHTML = html;
+
+    // Render calibration chart after DOM insertion
+    requestAnimationFrame(() => {
+        const canvas = document.getElementById(chartId);
+        if (canvas && typeof Chart !== 'undefined') {
+            const buckets = group.calibration.filter(b => b.count > 0);
+            const chart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: buckets.map(b => ((b.bin_start + b.bin_end) / 2 * 100).toFixed(0) + '%'),
+                    datasets: [
+                        {
+                            label: 'Actual positive rate',
+                            data: buckets.map(b => b.actual_positive_rate != null ? (b.actual_positive_rate * 100).toFixed(1) : null),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            tension: 0.2,
+                        },
+                        {
+                            label: 'Perfect calibration',
+                            data: buckets.map(b => ((b.bin_start + b.bin_end) / 2 * 100).toFixed(1)),
+                            borderColor: '#6b7280',
+                            borderWidth: 1,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const bucket = group.calibration.filter(b => b.count > 0)[ctx.dataIndex];
+                                    const n = bucket ? bucket.count : 0;
+                                    return `${ctx.dataset.label}: ${ctx.parsed.y}% (n=${n})`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Predicted confidence', color: '#71717a', font: { size: 10 } },
+                            ticks: { color: '#71717a', font: { size: 10 } },
+                            grid: { color: 'rgba(42,46,58,0.5)' },
+                        },
+                        y: {
+                            min: 0, max: 100,
+                            title: { display: true, text: 'Actual positive %', color: '#71717a', font: { size: 10 } },
+                            ticks: { color: '#71717a', font: { size: 10 }, callback: v => v + '%' },
+                            grid: { color: 'rgba(42,46,58,0.5)' },
+                        },
+                    },
+                },
+            });
+            _groupCalibrationCharts.push(chart);
+        }
+    });
+
+    return card;
 }
 
 // ─── Bbox Overlay ─────────────────────────────────────────────────

@@ -1,0 +1,35 @@
+{
+  "input_dim": 33,
+  "lstm_units": [
+    64,
+    32
+  ],
+  "dropout": 0.3,
+  "best_epoch": 6,
+  "saved_at": "2026-02-12T20:23:33.756467+00:00",
+  "split": {
+    "method": "video_level",
+    "train_videos": [
+      "186942df-af6e-4bda-b6a6-98f87129e273",
+      "ec6bbbe7-4df4-4a6e-a1f0-c64c9f7b2b43",
+      "031aad76-8f06-4d2f-a5af-b93ab40c20e2",
+      "37557c3f-5d59-4d76-ad48-977dfd9248ec",
+      "5e8b5071-49ed-41eb-a075-f5a2a4f472e8",
+      "f35d78cc-c891-499d-8b6a-7f803500d7c4",
+      "bff59d49-5f64-47d5-a909-4e858c8a1cd1",
+      "878dd184-d154-4dcd-8c81-50d077bd76e2",
+      "cd0f02c8-2604-4385-83b7-5d6052af53c5",
+      "e93d7d16-8134-448b-8961-66dc89821bad",
+      "c4257671-3ae4-4d7a-8a42-d2824dd3701b"
+    ],
+    "val_videos": [
+      "732fbd8e-b38f-4a4c-9eb8-48c2832eb467",
+      "49961e41-5ade-4290-aa49-92816518ad18"
+    ],
+    "test_videos": [
+      "92f494f2-2ff4-4052-aab6-c2abd2ff92cd",
+      "c20a494e-dc10-4c44-b023-622dcddfb1e0",
+      "f3077d5c-0882-413e-b8fc-34a37ad5157b"
+    ]
+  }
+}

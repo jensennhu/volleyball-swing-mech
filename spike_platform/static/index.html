@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Volleyball Spike Detector</title>
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
     <header class="app-header">
@@ -39,6 +39,7 @@
                         <th>Filename</th>
                         <th>Duration</th>
                         <th>Status</th>
+                        <th>Group</th>
                         <th>Tracks</th>
                         <th>Segments</th>
                         <th>Labeled</th>
@@ -136,13 +137,20 @@
 
                 <!-- Role ID mode controls -->
                 <div id="role-mode-controls" style="display:none;">
+                    <div class="segment-filters" id="role-filter-buttons" style="margin-bottom:4px;">
+                        <button class="btn btn-sm btn-outline active" data-role-filter="all">All</button>
+                        <button class="btn btn-sm btn-outline" data-role-filter="player">Players</button>
+                        <button class="btn btn-sm btn-outline" data-role-filter="non_player">Non-players</button>
+                        <button class="btn btn-sm btn-outline" data-role-filter="unknown">Unknown</button>
+                    </div>
                     <div class="shortcuts-hint" style="margin-bottom:8px;">
-                        Classify tracks as player or non-player. Click a track to preview.
-                        &nbsp; <kbd>P</kbd> player &nbsp; <kbd>X</kbd> non-player &nbsp;
+                        Click a track to preview. &nbsp;
+                        <kbd>P</kbd> player &nbsp; <kbd>X</kbd> non-player &nbsp;
                         <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate
                     </div>
                     <div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">
-                        <button class="btn btn-sm btn-outline" id="reclassify-btn">Re-run Heuristic</button>
+                        <button class="btn btn-sm btn-outline" id="reclassify-btn">Reclassify</button>
+                        <button class="btn btn-sm btn-outline" id="train-role-btn">Train Role Model</button>
                         <span id="role-stats" style="font-size:0.75rem; color:var(--text-secondary); line-height:28px;"></span>
                     </div>
                 </div>
@@ -167,6 +175,7 @@
                         <select name="task_type" id="training-task-type">
                             <option value="spike_detection">Spike Detection</option>
                             <option value="phase_classification">Phase Classification</option>
+                            <option value="role_classification">Role Classification</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -232,9 +241,21 @@
                 <canvas id="metrics-chart"></canvas>
             </div>
         </div>
+
+        <div class="card" style="margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:14px;">Group Analysis</h3>
+                <select id="group-metrics-run-select" style="padding:6px 10px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+                    <option value="">Select a training run...</option>
+                </select>
+            </div>
+            <div id="group-metrics-container" style="font-size:13px; color:var(--text-muted);">
+                Select a completed spike detection run to view per-group metrics.
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=16"></script>
 </body>
 </html>

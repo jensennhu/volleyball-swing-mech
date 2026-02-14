@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from spike_platform.config import settings
 from spike_platform.database import get_db
 from spike_platform.models.db_models import Video, Track, TrackFrame, Segment
-from spike_platform.schemas.video import VideoResponse, VideoStatusResponse
+from spike_platform.schemas.video import VideoResponse, VideoStatusResponse, VideoGroupUpdate
 from spike_platform.schemas.segment import SegmentResponse, SegmentListResponse, TrackResponse, TrackRoleUpdate
 from spike_platform.worker import worker
 from spike_platform.services.video_processing import process_video_pipeline
@@ -42,6 +42,7 @@ def _video_to_response(video: Video, db: Session) -> VideoResponse:
         duration_seconds=video.duration_seconds,
         status=video.status,
         error_message=video.error_message,
+        video_group=video.video_group,
         track_count=track_count,
         segment_count=segment_count,
         labeled_count=labeled_count,
@@ -155,6 +156,21 @@ def delete_video(video_id: str, db: Session = Depends(get_db)):
     db.delete(video)
     db.commit()
     return {"ok": True}
+
+
+@router.patch("/videos/{video_id}/group")
+def update_video_group(
+    video_id: str,
+    update: VideoGroupUpdate,
+    db: Session = Depends(get_db),
+):
+    """Set or clear a video's group label."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Video not found")
+    video.video_group = update.video_group
+    db.commit()
+    return {"id": video.id, "video_group": video.video_group}
 
 
 @router.post("/videos/{video_id}/reprocess")
@@ -347,10 +363,11 @@ def list_tracks(video_id: str, role: str | None = Query(None), db: Session = Dep
 
     video_w = video.width or 1920
     video_h = video.height or 1080
+    video_fc = video.frame_count or 0
 
     result = []
     for track in tracks:
-        stats = compute_track_stats(track.id, db, video_w, video_h)
+        stats = compute_track_stats(track.id, db, video_w, video_h, video_fc)
         seg_count = db.query(func.count(Segment.id)).filter(Segment.track_id == track.id).scalar()
         result.append(TrackResponse(
             id=track.id,
@@ -363,6 +380,10 @@ def list_tracks(video_id: str, role: str | None = Query(None), db: Session = Dep
             role_source=track.role_source,
             median_bbox_area=stats["median_bbox_area"],
             median_pose_confidence=stats["median_pose_confidence"],
+            movement_variance=stats["movement_variance"],
+            bbox_aspect_ratio=stats["bbox_aspect_ratio"],
+            track_duration_ratio=stats["track_duration_ratio"],
+            vertical_range=stats["vertical_range"],
             segment_count=seg_count,
         ))
 
@@ -393,12 +414,12 @@ def update_track_role(
 
 @router.post("/videos/{video_id}/tracks/reclassify")
 def reclassify_tracks(video_id: str, db: Session = Depends(get_db)):
-    """Re-run heuristic classification on non-human-labeled tracks."""
-    from spike_platform.services.track_classifier import classify_tracks
+    """Re-run classification on non-human-labeled tracks (ML if available, else heuristic)."""
+    from spike_platform.services.track_classifier import classify_tracks_ml
 
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(404, "Video not found")
 
-    counts = classify_tracks(video_id, db)
+    counts = classify_tracks_ml(video_id, db)
     return counts
