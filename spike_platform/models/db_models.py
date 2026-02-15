@@ -4,7 +4,7 @@ SQLAlchemy ORM models for the spike detector platform.
 
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Integer, Float, Text, DateTime, Index, ForeignKey
+    Boolean, Column, String, Integer, Float, Text, DateTime, Index, ForeignKey
 )
 from sqlalchemy.orm import relationship
 
@@ -157,6 +157,7 @@ class TrainingRun(Base):
     # Artifacts
     checkpoint_dir = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
+    balance_by_group = Column(Boolean, nullable=True, default=False)
 
     started_at = Column(DateTime, default=_utcnow)
     completed_at = Column(DateTime, nullable=True)

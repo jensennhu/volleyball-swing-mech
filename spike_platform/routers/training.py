@@ -1,6 +1,7 @@
 """Training and inference endpoints."""
 
 import json
+import shutil
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
@@ -12,6 +13,7 @@ from spike_platform.models.db_models import Segment, SegmentPhase, Track, Traini
 from spike_platform.schemas.training import (
     TrainingConfig,
     TrainingRunResponse,
+    TrainingRunNotesUpdate,
     TrainingStatusResponse,
     InferenceRequest,
     InferenceResponse,
@@ -79,6 +81,7 @@ def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
         lstm_units=json.dumps(config.lstm_units),
         window_size=settings.WINDOW_SIZE,
         dropout=config.dropout,
+        balance_by_group=config.balance_by_group,
     )
     db.add(run)
     db.commit()
@@ -129,6 +132,45 @@ def get_training_status(run_id: int, db: Session = Depends(get_db)):
         train_loss=run.train_loss,
         val_loss=run.val_loss,
     )
+
+
+@router.patch("/training/runs/{run_id}/notes")
+def update_training_run_notes(
+    run_id: int,
+    update: TrainingRunNotesUpdate,
+    db: Session = Depends(get_db),
+):
+    """Update the notes/description for a training run."""
+    run = db.query(TrainingRun).filter(TrainingRun.id == run_id).first()
+    if not run:
+        raise HTTPException(404, "Training run not found")
+    run.notes = update.notes
+    db.commit()
+    return {"id": run.id, "notes": run.notes}
+
+
+@router.delete("/training/runs/{run_id}")
+def delete_training_run(run_id: int, db: Session = Depends(get_db)):
+    """Delete a training run, its checkpoint, and nullify segment references."""
+    run = db.query(TrainingRun).filter(TrainingRun.id == run_id).first()
+    if not run:
+        raise HTTPException(404, "Training run not found")
+
+    # Nullify references on segments (keep segments, clear predictions from this run)
+    db.query(Segment).filter(Segment.model_run_id == run_id).update(
+        {Segment.model_run_id: None, Segment.prediction: None, Segment.confidence: None}
+    )
+    db.query(SegmentPhase).filter(SegmentPhase.model_run_id == run_id).update(
+        {SegmentPhase.model_run_id: None}
+    )
+
+    # Delete checkpoint directory from disk
+    if run.checkpoint_dir:
+        shutil.rmtree(run.checkpoint_dir, ignore_errors=True)
+
+    db.delete(run)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/training/group-metrics", response_model=GroupMetricsResponse)

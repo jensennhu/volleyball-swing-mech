@@ -14,6 +14,7 @@ class TrainingConfig(BaseModel):
     dropout: float = 0.3
     class_weight_positive: float = 2.0
     early_stopping_patience: int = 15
+    balance_by_group: bool = False
 
 
 class TrainingRunResponse(BaseModel):
@@ -40,6 +41,7 @@ class TrainingRunResponse(BaseModel):
     test_auc: Optional[float] = None
     checkpoint_dir: Optional[str] = None
     notes: Optional[str] = None
+    balance_by_group: Optional[bool] = False
     started_at: datetime
     completed_at: Optional[datetime] = None
 
@@ -52,6 +54,10 @@ class TrainingStatusResponse(BaseModel):
     total_epochs: Optional[int] = None
     train_loss: Optional[float] = None
     val_loss: Optional[float] = None
+
+
+class TrainingRunNotesUpdate(BaseModel):
+    notes: Optional[str] = None
 
 
 class InferenceRequest(BaseModel):

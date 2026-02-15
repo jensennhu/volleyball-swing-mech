@@ -1248,6 +1248,7 @@ document.getElementById('training-form').addEventListener('submit', async e => {
         batch_size: parseInt(form.batch_size.value),
         dropout: parseFloat(form.dropout.value),
         class_weight_positive: parseFloat(form.class_weight_positive.value),
+        balance_by_group: document.getElementById('balance-by-group').checked,
         lstm_units: [64, 32],
     };
 
@@ -1319,8 +1320,11 @@ async function loadTrainingRuns() {
             }
             // role_classification runs don't have a re-infer action (use Reclassify in Role ID tab instead)
 
+            const notesDisplay = r.notes ? esc(r.notes) : '<span style="color:var(--text-muted);">—</span>';
+
             tr.innerHTML = `
                 <td>#${r.id}${isBest ? ' <span style="color:var(--success); font-size:11px;">best</span>' : ''}</td>
+                <td class="run-notes-cell" data-run-id="${r.id}" style="max-width:140px; cursor:pointer;" title="Click to edit">${notesDisplay}</td>
                 <td><span class="badge badge-${r.status}">${r.status}</span></td>
                 <td>${samples}</td>
                 <td>${acc}</td>
@@ -1329,13 +1333,55 @@ async function loadTrainingRuns() {
                 <td>${f1}</td>
                 <td>${auc}</td>
                 <td>${loss}</td>
-                <td>${r.status === 'completed' ? inferBtn : ''}</td>
+                <td>
+                    ${r.status === 'completed' ? inferBtn : ''}
+                    <button class="btn btn-sm btn-danger" onclick="deleteTrainingRun(${r.id})" style="margin-left:4px;">Del</button>
+                </td>
             `;
             tbody.appendChild(tr);
         }
 
+        // Wire up inline notes editing
+        tbody.querySelectorAll('.run-notes-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                if (cell.querySelector('input')) return; // already editing
+                const runId = cell.dataset.runId;
+                const current = cell.textContent.trim() === '—' ? '' : cell.textContent.trim();
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = current;
+                input.style.cssText = 'width:100%; padding:2px 4px; background:var(--bg); color:var(--text); border:1px solid var(--primary); border-radius:3px; font-size:12px;';
+                cell.innerHTML = '';
+                cell.appendChild(input);
+                input.focus();
+
+                const save = async () => {
+                    const val = input.value.trim();
+                    try {
+                        await api(`/training/runs/${runId}/notes`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ notes: val || null }),
+                        });
+                    } catch { /* ignore */ }
+                    cell.innerHTML = val ? esc(val) : '<span style="color:var(--text-muted);">—</span>';
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+            });
+        });
+
         renderMetricsChart(runs);
     } catch { /* ignore on initial load */ }
+}
+
+async function deleteTrainingRun(runId) {
+    if (!confirm(`Delete training run #${runId}? This will remove the checkpoint and clear predictions from this run.`)) return;
+    try {
+        await api(`/training/runs/${runId}`, { method: 'DELETE' });
+        loadTrainingRuns();
+    } catch (e) {
+        alert('Failed to delete run: ' + e.message);
+    }
 }
 
 let _metricsChart = null;
@@ -1355,6 +1401,15 @@ function renderMetricsChart(runs) {
         const total = (r.train_count || 0) + (r.val_count || 0) + (r.test_count || 0);
         return `#${r.id} (${total > 1000 ? (total / 1000).toFixed(1) + 'k' : total})`;
     });
+
+    // Compute dynamic y-axis min from data
+    const allMetricValues = completed.flatMap(r =>
+        [r.test_f1, r.test_precision, r.test_recall, r.test_accuracy]
+        .filter(v => v != null)
+        .map(v => v * 100)
+    );
+    const dataMin = allMetricValues.length > 0 ? Math.min(...allMetricValues) : 60;
+    const yMin = Math.max(0, Math.floor(dataMin / 10) * 10 - 10);
 
     // Destroy previous chart to prevent canvas reuse errors
     if (_metricsChart) {
@@ -1422,7 +1477,7 @@ function renderMetricsChart(runs) {
                     grid: { color: 'rgba(42, 46, 58, 0.5)' },
                 },
                 y: {
-                    min: 60,
+                    min: yMin,
                     max: 100,
                     ticks: {
                         color: '#71717a',
@@ -1660,11 +1715,11 @@ function renderGroupCard(group) {
 
     html += `</div>`;
 
-    // Per-video breakdown
+    // Per-video breakdown (collapsible)
     if (group.per_video && group.per_video.length > 0) {
-        html += `<div style="margin-top:12px;">
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Per-Video F1 (mean: ${(group.f1_mean * 100).toFixed(1)}% &plusmn; ${(group.f1_std * 100).toFixed(1)}%)</div>
-            <table style="width:100%; font-size:12px;">
+        html += `<details style="margin-top:12px;">
+            <summary style="cursor:pointer; font-size:11px; color:var(--text-muted);">Per-Video F1 (mean: ${(group.f1_mean * 100).toFixed(1)}% &plusmn; ${(group.f1_std * 100).toFixed(1)}%)</summary>
+            <table style="width:100%; font-size:12px; margin-top:4px;">
                 <thead><tr><th style="text-align:left;">Video</th><th>N</th><th>Prec</th><th>Recall</th><th>F1</th></tr></thead>
                 <tbody>`;
         for (const v of group.per_video) {
@@ -1676,7 +1731,7 @@ function renderGroupCard(group) {
                 <td>${v.f1 != null ? (v.f1 * 100).toFixed(1) + '%' : '-'}</td>
             </tr>`;
         }
-        html += `</tbody></table></div>`;
+        html += `</tbody></table></details>`;
     }
 
     card.innerHTML = html;

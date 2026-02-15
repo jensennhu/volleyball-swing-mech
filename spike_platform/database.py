@@ -49,6 +49,7 @@ def init_db():
     with engine.connect() as conn:
         for table, column, col_type in [
             ("videos", "video_group", "TEXT"),
+            ("training_runs", "balance_by_group", "BOOLEAN DEFAULT 0"),
         ]:
             try:
                 conn.execute(

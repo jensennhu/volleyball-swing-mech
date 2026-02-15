@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 
 from spike_platform.config import settings
 from spike_platform.database import SessionLocal
-from spike_platform.models.db_models import Segment, Track, TrainingRun
+from spike_platform.models.db_models import Segment, Track, TrainingRun, Video
 from spike_platform.ml.trainer import SpikeTrainer
 
 logger = logging.getLogger(__name__)
@@ -131,6 +131,45 @@ def run_training(
             if not feats:
                 return np.empty((0, settings.WINDOW_SIZE, settings.FEATURE_DIM)), np.array([])
             return np.stack(feats), np.array(labs)
+
+        # Group-balanced oversampling for training data
+        if getattr(run, 'balance_by_group', False) and train_vids:
+            video_groups: dict[str, str] = {}
+            for vid in train_vids:
+                v = db.query(Video).filter(Video.id == vid).first()
+                video_groups[vid] = (v.video_group if v and v.video_group else "ungrouped")
+
+            # Group training videos by their group tag
+            group_to_vids: dict[str, list[str]] = {}
+            for vid in train_vids:
+                g = video_groups[vid]
+                group_to_vids.setdefault(g, []).append(vid)
+
+            # Count segments per group
+            group_counts = {
+                g: sum(len(video_data[v]) for v in vids)
+                for g, vids in group_to_vids.items()
+            }
+            max_count = max(group_counts.values()) if group_counts else 0
+
+            if len(group_counts) > 1 and max_count > 0:
+                rng = np.random.RandomState(42)
+                for g, vids in group_to_vids.items():
+                    orig = group_counts[g]
+                    if orig < max_count:
+                        # Collect all samples from this group
+                        group_samples = []
+                        for v in vids:
+                            group_samples.extend(video_data[v])
+                        # Oversample with replacement
+                        extra_needed = max_count - orig
+                        extra_indices = rng.choice(len(group_samples), size=extra_needed, replace=True)
+                        extra_samples = [group_samples[i] for i in extra_indices]
+                        # Distribute extras to the first video in the group (arbitrary but simple)
+                        video_data[vids[0]].extend(extra_samples)
+                        logger.info(f"  Group '{g}': {orig} -> {max_count} ({extra_needed} oversampled)")
+                    else:
+                        logger.info(f"  Group '{g}': {orig} (largest, no change)")
 
         X_train, y_train = collect_split(train_vids)
         X_val, y_val = collect_split(val_vids)
