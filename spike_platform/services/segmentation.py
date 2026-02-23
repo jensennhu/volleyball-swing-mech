@@ -27,7 +27,9 @@ def create_segments_for_track(
     track_frames: list[TrackFrame],
     window_size: int = None,
     stride: int = None,
-    max_gap: int = 5,
+    max_gap: int = 8,
+    vertical_features: dict[int, np.ndarray] = None,
+    ball_features: dict[int, np.ndarray] = None,
 ) -> list[SegmentData]:
     """
     Create overlapping sliding window segments from a track's frame data.
@@ -37,13 +39,17 @@ def create_segments_for_track(
         window_size: Number of frames per segment (default: settings.WINDOW_SIZE).
         stride: Step between windows (default: settings.WINDOW_STRIDE).
         max_gap: Maximum allowed gap in frame numbers within a window.
-                 Windows spanning larger gaps are skipped.
+        vertical_features: Optional {frame_number: np.array(3,)} from context_features.
+        ball_features: Optional {frame_number: np.array(4,)} from context_features.
 
     Returns:
-        List of SegmentData, each with a (window_size, 33) feature matrix.
+        List of SegmentData. Feature dim is 33 (v1) or 40 (v2) depending on
+        whether context feature dicts are provided.
     """
     window_size = window_size or settings.WINDOW_SIZE
     stride = stride or settings.WINDOW_STRIDE
+
+    use_context = vertical_features is not None and ball_features is not None
 
     # Filter to frames that have valid pose features
     valid_frames = []
@@ -63,6 +69,10 @@ def create_segments_for_track(
     # Sort by frame number
     valid_frames.sort(key=lambda x: x[0])
 
+    # Default context vectors when missing for a frame
+    default_vertical = np.zeros(3, dtype=np.float32)
+    default_ball = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
+
     segments = []
     for i in range(0, len(valid_frames) - window_size + 1, stride):
         window = valid_frames[i : i + window_size]
@@ -75,7 +85,18 @@ def create_segments_for_track(
         if max_frame_gap > max_gap:
             continue
 
-        features = np.array([f[1] for f in window], dtype=np.float32)
+        if use_context:
+            # Build 40-dim features: [pose_33 | vertical_3 | ball_4]
+            rows = []
+            for fn, pose_feats in window:
+                pose = np.array(pose_feats, dtype=np.float32)
+                vert = vertical_features.get(fn, default_vertical)
+                ball = ball_features.get(fn, default_ball)
+                rows.append(np.concatenate([pose, vert, ball]))
+            features = np.stack(rows)
+        else:
+            features = np.array([f[1] for f in window], dtype=np.float32)
+
         segments.append(
             SegmentData(
                 start_frame=frame_nums[0],

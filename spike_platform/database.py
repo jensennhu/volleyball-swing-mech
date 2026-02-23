@@ -50,6 +50,12 @@ def init_db():
         for table, column, col_type in [
             ("videos", "video_group", "TEXT"),
             ("training_runs", "balance_by_group", "BOOLEAN DEFAULT 0"),
+            ("track_frames", "wrist_r_x", "FLOAT"),
+            ("track_frames", "wrist_r_y", "FLOAT"),
+            ("track_frames", "wrist_l_x", "FLOAT"),
+            ("track_frames", "wrist_l_y", "FLOAT"),
+            ("segments", "feature_version", "INTEGER DEFAULT 1"),
+            ("training_runs", "feature_dim", "INTEGER DEFAULT 33"),
         ]:
             try:
                 conn.execute(

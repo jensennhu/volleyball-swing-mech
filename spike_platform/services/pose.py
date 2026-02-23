@@ -66,6 +66,52 @@ class PoseService:
         confidence = features[-1] if features is not None else 0.0
         return features, confidence
 
+    def extract_features_and_wrists(
+        self,
+        frame: np.ndarray,
+        bbox: tuple[float, float, float, float],
+    ) -> tuple[Optional[np.ndarray], float, tuple[float, float], tuple[float, float]]:
+        """
+        Extract 33-dim features + raw wrist positions in frame-space.
+
+        Returns:
+            (features, confidence, (wrist_r_x, wrist_r_y), (wrist_l_x, wrist_l_y))
+            Wrist positions are in frame pixel coordinates.
+            Returns (None, 0.0, (0,0), (0,0)) if pose not detected.
+        """
+        h, w = frame.shape[:2]
+        x1 = max(0, int(bbox[0]))
+        y1 = max(0, int(bbox[1]))
+        x2 = min(w, int(bbox[2]))
+        y2 = min(h, int(bbox[3]))
+
+        no_wrists = (0.0, 0.0)
+        if x2 <= x1 or y2 <= y1:
+            return None, 0.0, no_wrists, no_wrists
+
+        crop = frame[y1:y2, x1:x2]
+        crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+
+        result = self.pose.process(crop_rgb)
+        if not result.pose_landmarks:
+            return None, 0.0, no_wrists, no_wrists
+
+        features = self._extract_normalized_features(result.pose_landmarks)
+        confidence = features[-1] if features is not None else 0.0
+
+        # Map wrist landmarks from crop-relative (0-1) to frame pixel coords
+        PL = self.mp_pose.PoseLandmark
+        crop_w = x2 - x1
+        crop_h = y2 - y1
+
+        r_wrist = result.pose_landmarks.landmark[PL.RIGHT_WRIST]
+        l_wrist = result.pose_landmarks.landmark[PL.LEFT_WRIST]
+
+        wrist_r = (x1 + r_wrist.x * crop_w, y1 + r_wrist.y * crop_h)
+        wrist_l = (x1 + l_wrist.x * crop_w, y1 + l_wrist.y * crop_h)
+
+        return features, confidence, wrist_r, wrist_l
+
     def close(self):
         """Release MediaPipe resources."""
         self.pose.close()

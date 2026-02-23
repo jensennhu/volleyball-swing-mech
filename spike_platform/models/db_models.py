@@ -68,6 +68,11 @@ class TrackFrame(Base):
     detection_confidence = Column(Float, nullable=True)
     pose_features = Column(Text, nullable=True)  # JSON array of 33 floats
     pose_confidence = Column(Float, nullable=True)
+    # Frame-space wrist positions (for ball proximity computation)
+    wrist_r_x = Column(Float, nullable=True)
+    wrist_r_y = Column(Float, nullable=True)
+    wrist_l_x = Column(Float, nullable=True)
+    wrist_l_y = Column(Float, nullable=True)
 
     track = relationship("Track", back_populates="frames")
 
@@ -97,6 +102,7 @@ class Segment(Base):
 
     # Cached feature blob
     features_path = Column(String, nullable=True)  # path to .npy file
+    feature_version = Column(Integer, nullable=True, default=1)  # 1=33-dim, 2=40-dim
 
     created_at = Column(DateTime, default=_utcnow)
 
@@ -158,6 +164,25 @@ class TrainingRun(Base):
     checkpoint_dir = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     balance_by_group = Column(Boolean, nullable=True, default=False)
+    feature_dim = Column(Integer, nullable=True, default=33)
 
     started_at = Column(DateTime, default=_utcnow)
     completed_at = Column(DateTime, nullable=True)
+
+
+class BallDetection(Base):
+    __tablename__ = "ball_detections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(String, ForeignKey("videos.id", ondelete="CASCADE"), nullable=False)
+    frame_number = Column(Integer, nullable=False)
+    bbox_x1 = Column(Float, nullable=False)
+    bbox_y1 = Column(Float, nullable=False)
+    bbox_x2 = Column(Float, nullable=False)
+    bbox_y2 = Column(Float, nullable=False)
+    confidence = Column(Float, nullable=True)
+    ball_track_id = Column(Integer, nullable=True)
+
+    __table_args__ = (
+        Index("ix_ball_det_video_frame", "video_id", "frame_number"),
+    )

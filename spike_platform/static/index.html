@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Volleyball Spike Detector</title>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
     <header class="app-header">
@@ -13,6 +13,7 @@
             <button class="active" data-view="videos">Videos</button>
             <button data-view="review">Review</button>
             <button data-view="training">Training</button>
+            <button data-view="output">Output</button>
         </nav>
     </header>
 
@@ -58,6 +59,7 @@
             <button class="active" data-review-mode="spike">Spike Labeling</button>
             <button data-review-mode="phase">Phase Annotation</button>
             <button data-review-mode="role">Role ID</button>
+            <button data-review-mode="analysis">Analysis</button>
         </div>
 
         <div class="review-layout">
@@ -126,12 +128,24 @@
                         <kbd>S</kbd> spike &nbsp; <kbd>N</kbd> non-spike &nbsp;
                         <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate
                     </div>
+                    <div style="margin-top:8px;">
+                        <button class="btn btn-sm btn-primary" id="accept-spike-predictions-btn">Accept All Predictions</button>
+                        <span id="accept-spike-status" style="font-size:12px; color:var(--text-muted); margin-left:8px;"></span>
+                    </div>
                 </div>
 
                 <!-- Phase annotation mode controls -->
                 <div id="phase-mode-controls" style="display:none;">
                     <div class="shortcuts-hint" style="margin-bottom:8px;">
                         Showing spike segments only. Select one to annotate phases.
+                    </div>
+                </div>
+
+                <!-- Analysis mode controls -->
+                <div id="analysis-mode-controls" style="display:none;">
+                    <div class="shortcuts-hint" style="margin-bottom:8px;">
+                        All player tracks with model predictions overlaid on video.
+                        Ball detections shown in yellow.
                     </div>
                 </div>
 
@@ -262,7 +276,42 @@
         </div>
     </div>
 
+    <!-- View 4: Output Dashboard -->
+    <div id="view-output" class="view">
+        <div class="output-video-checks" id="output-video-checks">
+        </div>
+        <div class="output-selectors">
+            <select id="output-track-select" style="display:none;">
+                <option value="">Select a track...</option>
+            </select>
+        </div>
+        <div id="output-scatter-container" class="card" style="display:none;">
+            <h3 style="margin-bottom:8px; font-size:14px;">Arm Swing Speed vs Jump Height</h3>
+            <div style="height:300px; position:relative;">
+                <canvas id="output-scatter-chart"></canvas>
+            </div>
+        </div>
+        <div class="output-charts-row">
+            <div id="output-height-scatter-container" class="card" style="display:none;">
+                <h3 style="margin-bottom:8px; font-size:14px;">Jump Height vs Reach Height</h3>
+                <div style="height:300px; position:relative;">
+                    <canvas id="output-height-scatter-chart"></canvas>
+                </div>
+            </div>
+            <div id="output-swing-scatter-container" class="card" style="display:none;">
+                <h3 style="margin-bottom:8px; font-size:14px;">Arm Swing Range vs Speed</h3>
+                <div style="height:300px; position:relative;">
+                    <canvas id="output-swing-scatter-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div id="output-empty" style="text-align:center; padding:48px; color:var(--text-muted);">
+            Select a video with phase-annotated spikes to view analysis.
+        </div>
+        <div id="output-spikes"></div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=30"></script>
 </body>
 </html>

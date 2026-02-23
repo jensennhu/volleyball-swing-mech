@@ -162,8 +162,11 @@ def detect_id_switches(
             result.append(track)
             continue
 
-        # --- Signal 1: Spatial bbox jumps ---
+        # --- Signal 1: Spatial bbox jumps (sustained displacement) ---
         spatial_splits: set[int] = set()  # frame indices in track.frames
+        SUSTAINED_FRAMES = 3    # must stay displaced for N frames after jump
+        DECAY_RATIO = 0.85      # if dist drops below this fraction, it's motion
+
         for i in range(1, len(track.frames)):
             prev = track.frames[i - 1]
             curr = track.frames[i]
@@ -174,11 +177,48 @@ def detect_id_switches(
             h = _bbox_height(prev.bbox)
 
             if h > 0 and dist > max_jump * h:
-                spatial_splits.add(i)
+                # Large jump detected — check if displacement persists
+                sustained = True
+                for j in range(1, min(SUSTAINED_FRAMES + 1, len(track.frames) - i)):
+                    future = track.frames[i + j]
+                    cx_fut, cy_fut = _bbox_center(future.bbox)
+                    dist_from_origin = (
+                        (cx_fut - cx_prev) ** 2 + (cy_fut - cy_prev) ** 2
+                    ) ** 0.5
+                    if dist_from_origin < dist * DECAY_RATIO:
+                        sustained = False
+                        break
+
+                if sustained:
+                    spatial_splits.add(i)
+                else:
+                    logger.info(
+                        f"Transient spatial jump in track {track.track_id} at frame "
+                        f"{track.frames[i].frame_number} (displacement decayed, likely motion)"
+                    )
+
+        # --- Signal 3: Bbox height changes (different-sized person) ---
+        height_splits: set[int] = set()
+        HEIGHT_SWITCH_RATIO = 2.0  # height changes by more than 2x
+
+        for i in range(1, len(track.frames)):
+            prev = track.frames[i - 1]
+            curr = track.frames[i]
+            h_prev = _bbox_height(prev.bbox)
+            h_curr = _bbox_height(curr.bbox)
+            if h_prev > 0 and h_curr > 0:
+                ratio = max(h_prev, h_curr) / min(h_prev, h_curr)
+                if ratio > HEIGHT_SWITCH_RATIO:
+                    height_splits.add(i)
+                    logger.info(
+                        f"Height change in track {track.track_id} at frame "
+                        f"{curr.frame_number} (ratio={ratio:.2f}, {h_prev:.0f}→{h_curr:.0f})"
+                    )
 
         # --- Signal 2: ReID appearance drops ---
         reid_split_frames: set[int] = set()  # video frame numbers where appearance changes
         reid_high_sim_frames: set[int] = set()  # frames with high similarity (suppress spatial)
+        reid_low_sim_frames: set[int] = set()   # frames with low similarity (confirm spatial)
 
         track_embs = embeddings.get(track.track_id, []) if embeddings else []
 
@@ -190,6 +230,8 @@ def detect_id_switches(
 
                 if sim < reid_threshold:
                     reid_split_frames.add(frame_b)
+                    for fn in range(frame_a, frame_b + 1):
+                        reid_low_sim_frames.add(fn)
                     logger.info(
                         f"ReID appearance change in track {track.track_id} "
                         f"between frames {frame_a}-{frame_b} (sim={sim:.3f})"
@@ -202,7 +244,7 @@ def detect_id_switches(
         # --- Combine signals into final split points ---
         split_points: list[int] = []  # indices into track.frames
 
-        # Spatial splits: confirm unless ReID says high similarity
+        # Spatial splits: require ReID confirmation (low sim) or absence of ReID data
         for i in spatial_splits:
             frame_num = track.frames[i].frame_number
             if frame_num in reid_high_sim_frames:
@@ -210,32 +252,86 @@ def detect_id_switches(
                     f"Suppressing spatial split in track {track.track_id} at frame "
                     f"{frame_num} (high ReID similarity)"
                 )
-            else:
+            elif frame_num in reid_low_sim_frames:
                 split_points.append(i)
                 logger.warning(
-                    f"Spatial ID switch in track {track.track_id} at frame {frame_num}"
+                    f"Confirmed spatial+ReID split in track {track.track_id} "
+                    f"at frame {frame_num}"
+                )
+            elif not track_embs:
+                # No ReID data at all — trust spatial signal
+                split_points.append(i)
+                logger.warning(
+                    f"Spatial ID switch in track {track.track_id} at frame "
+                    f"{frame_num} (no ReID data)"
+                )
+            else:
+                # ReID data exists but doesn't cover this frame — default to same person
+                logger.info(
+                    f"Suppressing spatial split in track {track.track_id} at frame "
+                    f"{frame_num} (no ReID evidence of identity change)"
                 )
 
-        # ReID splits: find closest frame index for each appearance change
+        # ReID splits: require spatial support for moderate appearance drops
+        REID_STRICT_THRESHOLD = 0.15  # appearance-only splits need much lower sim
         if reid_split_frames:
             frame_num_to_idx = {
                 det.frame_number: i for i, det in enumerate(track.frames)
             }
-            for frame_num in reid_split_frames:
-                # Find the track frame index closest to this frame number
-                if frame_num in frame_num_to_idx:
-                    idx = frame_num_to_idx[frame_num]
+            for k in range(1, len(track_embs)):
+                frame_a, emb_a = track_embs[k - 1]
+                frame_b, emb_b = track_embs[k]
+                sim = float(np.dot(emb_a, emb_b))
+
+                if frame_b not in reid_split_frames:
+                    continue
+
+                # Find the track frame index closest to this frame
+                if frame_b in frame_num_to_idx:
+                    idx = frame_num_to_idx[frame_b]
                 else:
-                    # Find nearest frame index
                     idx = min(
                         range(len(track.frames)),
-                        key=lambda i: abs(track.frames[i].frame_number - frame_num),
+                        key=lambda i: abs(track.frames[i].frame_number - frame_b),
                     )
-                if idx > 0 and idx not in split_points:
+
+                if idx <= 0 or idx in split_points:
+                    continue
+
+                # Check if there's spatial support nearby (within 5 indices)
+                has_spatial = any(abs(idx - sp) <= 5 for sp in spatial_splits)
+
+                if has_spatial:
                     split_points.append(idx)
                     logger.warning(
-                        f"ReID ID switch in track {track.track_id} at frame "
-                        f"{track.frames[idx].frame_number}"
+                        f"Confirmed ReID+spatial split in track {track.track_id} "
+                        f"at frame {track.frames[idx].frame_number} (sim={sim:.3f})"
+                    )
+                elif sim < REID_STRICT_THRESHOLD:
+                    split_points.append(idx)
+                    logger.warning(
+                        f"Appearance-only split in track {track.track_id} "
+                        f"at frame {track.frames[idx].frame_number} (sim={sim:.3f})"
+                    )
+                else:
+                    logger.info(
+                        f"Suppressing ReID split in track {track.track_id} at frame "
+                        f"{track.frames[idx].frame_number} (sim={sim:.3f}, no spatial support)"
+                    )
+
+        # Height splits: dramatically different bbox size = different person
+        for i in height_splits:
+            if i not in split_points:
+                frame_num = track.frames[i].frame_number
+                if frame_num in reid_high_sim_frames:
+                    logger.info(
+                        f"Suppressing height split in track {track.track_id} at frame "
+                        f"{frame_num} (high ReID similarity — same person changed pose)"
+                    )
+                else:
+                    split_points.append(i)
+                    logger.warning(
+                        f"Height-based ID switch in track {track.track_id} at frame {frame_num}"
                     )
 
         # Sort and deduplicate split points
@@ -268,4 +364,113 @@ def detect_id_switches(
     logger.info(
         f"ID switch detection: {len(tracks)} tracks in → {len(result)} tracks out"
     )
+    return result
+
+
+def merge_broken_tracks(
+    tracks: list[TrackResult],
+    embeddings: Optional[dict[int, list[tuple[int, np.ndarray]]]] = None,
+    max_gap: int = 30,
+    max_center_dist_ratio: float = 3.0,
+) -> list[TrackResult]:
+    """Merge tracks that are likely the same person split by tracker loss.
+
+    Finds pairs where Track A ends within max_gap frames of Track B starting,
+    and the spatial distance between A's last bbox and B's first bbox is small.
+    """
+    if len(tracks) <= 1:
+        return tracks
+
+    # Sort tracks by start frame
+    tracks_sorted = sorted(
+        tracks, key=lambda t: t.frames[0].frame_number if t.frames else float("inf")
+    )
+
+    merged: set[int] = set()  # indices that have been absorbed
+    result = []
+
+    for i, track_a in enumerate(tracks_sorted):
+        if i in merged or not track_a.frames:
+            continue
+
+        current = track_a
+        current_emb_ids = {track_a.track_id}  # track IDs whose embeddings belong to current
+
+        # Try to extend by merging subsequent tracks
+        while True:
+            best_j = None
+            best_dist = float("inf")
+
+            last_frame = current.frames[-1]
+            last_fn = last_frame.frame_number
+            cx_last, cy_last = _bbox_center(last_frame.bbox)
+            h_last = _bbox_height(last_frame.bbox)
+
+            for j, track_b in enumerate(tracks_sorted):
+                if j in merged or j == i or not track_b.frames:
+                    continue
+                if track_b is current:
+                    continue
+
+                first_frame = track_b.frames[0]
+                first_fn = first_frame.frame_number
+
+                # Check temporal gap
+                gap = first_fn - last_fn
+                if gap < 0 or gap > max_gap:
+                    continue
+
+                # Check spatial proximity
+                cx_first, cy_first = _bbox_center(first_frame.bbox)
+                dist = ((cx_first - cx_last) ** 2 + (cy_first - cy_last) ** 2) ** 0.5
+
+                if h_last > 0 and dist / h_last > max_center_dist_ratio:
+                    continue
+
+                # Check bbox size consistency
+                h_first = _bbox_height(first_frame.bbox)
+                if h_last > 0 and h_first > 0:
+                    height_ratio = min(h_last, h_first) / max(h_last, h_first)
+                    if height_ratio < 0.5:
+                        logger.debug(
+                            f"Rejecting merge of track {track_b.track_id} into {current.track_id}: "
+                            f"height ratio {height_ratio:.2f} (last_h={h_last:.0f}, first_h={h_first:.0f})"
+                        )
+                        continue
+
+                # Check ReID similarity if available
+                if embeddings:
+                    embs_a = []
+                    for tid in current_emb_ids:
+                        embs_a.extend(embeddings.get(tid, []))
+                    embs_a.sort(key=lambda x: x[0])
+                    embs_b = embeddings.get(track_b.track_id, [])
+                    if embs_a and embs_b:
+                        sim = float(np.dot(embs_a[-1][1], embs_b[0][1]))
+                        if sim < 0.2:
+                            continue
+
+                if dist < best_dist:
+                    best_dist = dist
+                    best_j = j
+
+            if best_j is not None:
+                merged.add(best_j)
+                merge_target = tracks_sorted[best_j]
+                logger.info(
+                    f"Merging track {merge_target.track_id} into {current.track_id} "
+                    f"(gap={merge_target.frames[0].frame_number - current.frames[-1].frame_number} frames, "
+                    f"dist={best_dist:.1f}px)"
+                )
+                current = TrackResult(
+                    track_id=current.track_id,
+                    frames=current.frames + merge_target.frames,
+                )
+                current_emb_ids.add(merge_target.track_id)
+            else:
+                break
+
+        result.append(current)
+
+    logger.info(f"Track merging: {len(tracks)} tracks in → {len(result)} tracks out")
     return result

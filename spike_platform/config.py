@@ -16,10 +16,12 @@ class Settings:
     DB_PATH: Path = field(default=None)
 
     # Detection
-    YOLO_MODEL: str = "yolov8n.pt"
-    DETECTION_CONFIDENCE: float = 0.3
+    YOLO_MODEL: str = "yolov8s.pt"   # small model — used for ball detection pass
+    YOLO_POSE_MODEL: str = "yolov8s-pose.pt"  # pose model — used for person tracking with keypoints
+    DETECTION_CONFIDENCE: float = 0.25
     DETECTION_IOU: float = 0.5
     PERSON_CLASS_ID: int = 0  # COCO class ID for person
+    POSE_ASSOCIATION_THRESH: float = 0.5  # OKS distance above this is ignored in association
 
     # Pose
     POSE_MIN_DETECTION_CONF: float = 0.5
@@ -28,7 +30,7 @@ class Settings:
     # Segmentation
     WINDOW_SIZE: int = 40
     WINDOW_STRIDE: int = 10
-    MIN_TRACK_FRAMES: int = 40  # Skip tracks shorter than one window
+    MIN_TRACK_FRAMES: int = 30  # Skip very short tracks (allows near-window-size tracks)
 
     # Training defaults
     DEFAULT_LSTM_UNITS: list = field(default_factory=lambda: [64, 32])
@@ -41,9 +43,9 @@ class Settings:
     LR_REDUCE_PATIENCE: int = 7
 
     # Track post-processing
-    TRACK_SWITCH_MAX_JUMP: float = 2.0   # max bbox-center displacement (in bbox heights)
+    TRACK_SWITCH_MAX_JUMP: float = 6.0   # max bbox-center displacement (in bbox heights); conservative for fast spike motions
     REID_SAMPLE_INTERVAL: int = 30       # frames between ReID embedding samples
-    REID_SWITCH_THRESHOLD: float = 0.4   # cosine sim below this triggers split
+    REID_SWITCH_THRESHOLD: float = 0.3   # cosine sim below this triggers split (relaxed for fast motion)
 
     # Track role classification
     TRACK_ROLE_POSE_CONF_THRESHOLD: float = 0.5   # tracks below this are likely non-players
@@ -51,6 +53,14 @@ class Settings:
 
     # Features
     FEATURE_DIM: int = 33
+    FEATURE_DIM_V1: int = 33
+    FEATURE_DIM_V2: int = 40
+    FEATURE_VERSION: int = 2  # version for new processing
+
+    # Ball detection
+    BALL_CLASS_ID: int = 32  # COCO "sports ball"
+    BALL_DETECTION_CONFIDENCE: float = 0.25
+    BALL_MAX_TRACK_DISTANCE: float = 150.0  # pixels, for nearest-neighbor tracking
 
     def __post_init__(self):
         if self.UPLOAD_DIR is None:

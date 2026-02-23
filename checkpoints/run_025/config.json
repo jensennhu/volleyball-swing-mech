@@ -1,0 +1,35 @@
+{
+  "model_type": "phase_lstm",
+  "input_dim": 33,
+  "lstm_units": [
+    64,
+    32
+  ],
+  "dropout": 0.3,
+  "num_classes": 4,
+  "use_crf": true,
+  "best_epoch": 16,
+  "saved_at": "2026-02-22T00:30:24.833090+00:00",
+  "split": {
+    "method": "video_level",
+    "train_videos": [
+      "7e988b6e-b183-4ff7-b5dd-c79665851b14",
+      "08492069-d976-4fc5-bbcc-658efe111f19",
+      "a90bb6ef-1aab-43e5-8598-4534fc8e02e6",
+      "09835387-d0fe-4cdb-982d-1a7f36c4cda6",
+      "4c6864eb-44a5-4d74-ad7f-a1047080daf3",
+      "f70d0f90-0b86-4a9f-a748-0229bd92f02d",
+      "d1f49b39-249e-4fd1-b913-4ece57ff39ee",
+      "5e584dff-4872-4d2c-8c7d-38f1ca68ee8e",
+      "5bfbd865-ab67-40d3-b103-d4745f39be21"
+    ],
+    "val_videos": [
+      "3115d7c3-685c-4465-832d-563e73b17c03",
+      "6aaf82d4-c9b3-4c9d-9577-f7b24252efce"
+    ],
+    "test_videos": [
+      "58ddabad-c585-4022-b3f3-9674b692bc1f",
+      "a1e73aea-2e4e-4a64-9688-8dd5dbe6ce9b"
+    ]
+  }
+}

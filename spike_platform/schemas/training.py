@@ -42,6 +42,7 @@ class TrainingRunResponse(BaseModel):
     checkpoint_dir: Optional[str] = None
     notes: Optional[str] = None
     balance_by_group: Optional[bool] = False
+    feature_dim: Optional[int] = 33
     started_at: datetime
     completed_at: Optional[datetime] = None
 

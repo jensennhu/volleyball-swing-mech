@@ -145,7 +145,7 @@ def get_track_phases(segment_id: int, db: Session = Depends(get_db)):
 
     result = []
 
-    # Merge human-annotated phases
+    # Merge human-annotated phases (ordered by start_frame for consistent frontend display)
     human_merged = (
         db.query(
             SegmentPhase.phase,
@@ -157,6 +157,7 @@ def get_track_phases(segment_id: int, db: Session = Depends(get_db)):
             SegmentPhase.human_label.isnot(None),
         )
         .group_by(SegmentPhase.phase)
+        .order_by(func.min(SegmentPhase.start_frame))
         .all()
     )
     for row in human_merged:
@@ -186,6 +187,7 @@ def get_track_phases(segment_id: int, db: Session = Depends(get_db)):
                 SegmentPhase.model_run_id.isnot(None),
             )
             .group_by(SegmentPhase.phase)
+            .order_by(func.min(SegmentPhase.start_frame))
             .all()
         )
         for row in pred_merged:
@@ -241,28 +243,45 @@ def set_segment_phases(
     phase_min = min(p.start_frame for p in request.phases)
     phase_max = max(p.end_frame for p in request.phases)
 
+    # Delete ALL old human-labeled phases on all sibling segments upfront.
+    # This prevents stale entries from persisting on non-overlapping segments
+    # when the user trims phases to a shorter range.
+    sibling_ids = [sib.id for sib in sibling_segments]
+    db.query(SegmentPhase).filter(
+        SegmentPhase.segment_id.in_(sibling_ids),
+        SegmentPhase.human_label.isnot(None),
+    ).delete(synchronize_session="fetch")
+
+    # Insert new phases on overlapping segments
     for sib in sibling_segments:
-        # Only touch segments that overlap with the annotated phase range
         if sib.end_frame < phase_min or sib.start_frame > phase_max:
             continue
 
-        # Delete existing phase labels (both human and predicted) for this segment
-        db.query(SegmentPhase).filter(SegmentPhase.segment_id == sib.id).delete()
+        # For the primary segment, store full unclipped ranges so that
+        # get_track_phases() can reconstitute the original boundaries.
+        # For sibling segments, clip to their frame range.
+        is_primary = (sib.id == seg.id)
 
-        # Clip and insert phases that overlap with this segment's frame range
         for p in request.phases:
-            clipped_start = max(p.start_frame, sib.start_frame)
-            clipped_end = min(p.end_frame, sib.end_frame)
-            if clipped_start > clipped_end:
-                continue
-            phase = SegmentPhase(
-                segment_id=sib.id,
-                phase=p.phase,
-                start_frame=clipped_start,
-                end_frame=clipped_end,
-                human_label=p.phase,
-            )
-            db.add(phase)
+            if is_primary:
+                db.add(SegmentPhase(
+                    segment_id=sib.id,
+                    phase=p.phase,
+                    start_frame=p.start_frame,
+                    end_frame=p.end_frame,
+                    human_label=p.phase,
+                ))
+            else:
+                clipped_start = max(p.start_frame, sib.start_frame)
+                clipped_end = min(p.end_frame, sib.end_frame)
+                if clipped_start <= clipped_end:
+                    db.add(SegmentPhase(
+                        segment_id=sib.id,
+                        phase=p.phase,
+                        start_frame=clipped_start,
+                        end_frame=clipped_end,
+                        human_label=p.phase,
+                    ))
 
     db.commit()
 

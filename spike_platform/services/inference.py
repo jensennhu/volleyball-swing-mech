@@ -2,6 +2,7 @@
 Inference service: load trained model, predict on segments.
 """
 
+import logging
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -9,6 +10,8 @@ import numpy as np
 import torch
 
 from spike_platform.config import settings
+
+logger = logging.getLogger(__name__)
 from spike_platform.database import SessionLocal
 from spike_platform.models.db_models import Segment, Track, TrainingRun
 from spike_platform.ml.trainer import SpikeTrainer
@@ -75,9 +78,13 @@ def run_inference_on_video(
             if not feat_path.exists():
                 continue
             feat = np.load(str(feat_path))
-            if feat.shape == (settings.WINDOW_SIZE, settings.FEATURE_DIM):
+            if feat.shape == (settings.WINDOW_SIZE, trainer.input_dim):
                 features_list.append(feat)
                 valid_segments.append(seg)
+            elif feat.shape[0] == settings.WINDOW_SIZE:
+                logger.warning(
+                    f"Skipping segment {seg.id}: feature dim {feat.shape[1]} != model input_dim {trainer.input_dim}"
+                )
 
         if not features_list:
             if progress_callback:

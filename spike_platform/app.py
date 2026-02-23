@@ -26,11 +26,12 @@ def create_app() -> FastAPI:
     )
 
     # Register API routers
-    from spike_platform.routers import videos, segments, training, phases
+    from spike_platform.routers import videos, segments, training, phases, analysis
     app.include_router(videos.router, prefix="/api", tags=["videos"])
     app.include_router(segments.router, prefix="/api", tags=["segments"])
     app.include_router(training.router, prefix="/api", tags=["training"])
     app.include_router(phases.router, prefix="/api", tags=["phases"])
+    app.include_router(analysis.router, prefix="/api", tags=["analysis"])
 
     # Serve frontend static files
     static_dir = Path(__file__).parent / "static"

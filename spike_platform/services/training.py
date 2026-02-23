@@ -98,15 +98,30 @@ def run_training(
         )
 
         # Group by video: {video_id: [(features, label), ...]}
+        # Auto-detect feature dim from loaded data (accept v1=33 or v2=40)
+        valid_dims = {settings.FEATURE_DIM_V1, settings.FEATURE_DIM_V2}
         video_data: dict[str, list[tuple[np.ndarray, int]]] = {}
+        detected_dim = None
         for seg in labeled_segments:
             feat_path = Path(seg.features_path)
             if not feat_path.exists():
                 continue
             feat = np.load(str(feat_path))
-            if feat.shape != (settings.WINDOW_SIZE, settings.FEATURE_DIM):
+            if feat.shape[0] != settings.WINDOW_SIZE or feat.shape[1] not in valid_dims:
+                continue
+            if detected_dim is None:
+                detected_dim = feat.shape[1]
+            elif feat.shape[1] != detected_dim:
+                # Mixed feature versions — skip mismatched segments
+                logger.warning(
+                    f"Skipping segment {seg.id}: feature dim {feat.shape[1]} != majority {detected_dim}"
+                )
                 continue
             video_data.setdefault(seg.video_id, []).append((feat, seg.human_label))
+
+        if detected_dim is None:
+            detected_dim = settings.FEATURE_DIM
+        feature_dim = detected_dim
 
         total_samples = sum(len(v) for v in video_data.values())
         if total_samples < 10:
@@ -129,7 +144,7 @@ def run_training(
                     feats.append(feat)
                     labs.append(label)
             if not feats:
-                return np.empty((0, settings.WINDOW_SIZE, settings.FEATURE_DIM)), np.array([])
+                return np.empty((0, settings.WINDOW_SIZE, feature_dim)), np.array([])
             return np.stack(feats), np.array(labs)
 
         # Group-balanced oversampling for training data
@@ -199,7 +214,7 @@ def run_training(
         # Train
         lstm_units = json.loads(run.lstm_units)
         trainer = SpikeTrainer(
-            input_dim=settings.FEATURE_DIM,
+            input_dim=feature_dim,
             lstm_units=lstm_units,
             dropout=run.dropout,
             learning_rate=run.learning_rate,
@@ -245,6 +260,7 @@ def run_training(
         config_path.write_text(json.dumps(config, indent=2))
 
         # Update training run
+        run.feature_dim = feature_dim
         run.status = "completed"
         run.best_epoch = result["best_epoch"]
         run.train_loss = result["train_loss"]

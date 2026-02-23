@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from spike_platform.config import settings
 from spike_platform.database import get_db
-from spike_platform.models.db_models import Video, Track, TrackFrame, Segment
+from spike_platform.models.db_models import Video, Track, TrackFrame, Segment, BallDetection, SegmentPhase
 from spike_platform.schemas.video import VideoResponse, VideoStatusResponse, VideoGroupUpdate
 from spike_platform.schemas.segment import SegmentResponse, SegmentListResponse, TrackResponse, TrackRoleUpdate
 from spike_platform.worker import worker
@@ -184,8 +184,6 @@ def reprocess_video(video_id: str, db: Session = Depends(get_db)):
         raise HTTPException(409, "A job is already running")
 
     # Clean up existing data for this video
-    from spike_platform.models.db_models import SegmentPhase
-
     segments = db.query(Segment).filter(Segment.video_id == video_id).all()
     seg_ids = [s.id for s in segments]
     for seg in segments:
@@ -200,6 +198,7 @@ def reprocess_video(video_id: str, db: Session = Depends(get_db)):
     if track_ids:
         db.query(TrackFrame).filter(TrackFrame.track_id.in_(track_ids)).delete(synchronize_session="fetch")
     db.query(Track).filter(Track.video_id == video_id).delete()
+    db.query(BallDetection).filter(BallDetection.video_id == video_id).delete()
 
     video.status = "uploaded"
     video.error_message = None
@@ -272,9 +271,8 @@ def list_segments(
         query = query.filter(Segment.track_id == track_id)
     if role is not None:
         if role == "player":
-            # Include both 'player' and 'unknown' tracks (exclude only 'non_player')
             track_ids_with_role = (
-                db.query(Track.id).filter(Track.video_id == video_id, Track.role != "non_player").subquery()
+                db.query(Track.id).filter(Track.video_id == video_id, Track.role == "player").subquery()
             )
         else:
             track_ids_with_role = (
@@ -423,3 +421,136 @@ def reclassify_tracks(video_id: str, db: Session = Depends(get_db)):
 
     counts = classify_tracks_ml(video_id, db)
     return counts
+
+
+@router.get("/videos/{video_id}/analysis")
+def get_video_analysis(video_id: str, db: Session = Depends(get_db)):
+    """
+    Get all tracks, segments, predictions, phases, and ball detections
+    for rendering the analysis overlay in the Review tab.
+    """
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Video not found")
+
+    tracks = db.query(Track).filter(Track.video_id == video_id).order_by(Track.track_id).all()
+
+    result_tracks = []
+    for track in tracks:
+        # Bounding boxes for this track
+        tfs = (
+            db.query(TrackFrame)
+            .filter(TrackFrame.track_id == track.id)
+            .order_by(TrackFrame.frame_number)
+            .all()
+        )
+        bboxes = [
+            {"frame": tf.frame_number, "bbox": [tf.bbox_x1, tf.bbox_y1, tf.bbox_x2, tf.bbox_y2]}
+            for tf in tfs
+        ]
+
+        # Segments with predictions and phases
+        segs = (
+            db.query(Segment)
+            .filter(Segment.track_id == track.id)
+            .order_by(Segment.start_frame)
+            .all()
+        )
+        seg_results = []
+        for seg in segs:
+            phases = (
+                db.query(SegmentPhase)
+                .filter(SegmentPhase.segment_id == seg.id)
+                .order_by(SegmentPhase.start_frame)
+                .all()
+            )
+            seg_results.append({
+                "id": seg.id,
+                "start_frame": seg.start_frame,
+                "end_frame": seg.end_frame,
+                "prediction": seg.prediction,
+                "confidence": seg.confidence,
+                "human_label": seg.human_label,
+                "phases": [
+                    {"phase": p.phase, "start_frame": p.start_frame, "end_frame": p.end_frame}
+                    for p in phases
+                ],
+            })
+
+        result_tracks.append({
+            "track_id": track.track_id,
+            "db_track_id": track.id,
+            "role": track.role,
+            "start_frame": track.start_frame,
+            "end_frame": track.end_frame,
+            "segments": seg_results,
+            "bboxes": bboxes,
+        })
+
+    # Ball detections
+    balls = (
+        db.query(BallDetection)
+        .filter(BallDetection.video_id == video_id)
+        .order_by(BallDetection.frame_number)
+        .all()
+    )
+    ball_results = [
+        {"frame": b.frame_number, "bbox": [b.bbox_x1, b.bbox_y1, b.bbox_x2, b.bbox_y2]}
+        for b in balls
+    ]
+
+    return {
+        "video_id": video_id,
+        "tracks": result_tracks,
+        "ball_detections": ball_results,
+    }
+
+
+@router.get("/videos/{video_id}/tracks/{track_id}/diagnostics")
+def get_track_diagnostics(video_id: str, track_id: int, db: Session = Depends(get_db)):
+    """Compute per-frame spatial jump ratios for a track to diagnose split triggers.
+    track_id is the database ID (Track.id), matching the bboxes endpoint pattern.
+    """
+    track = db.query(Track).filter(Track.id == track_id).first()
+    if not track:
+        raise HTTPException(404, "Track not found")
+
+    frames = (
+        db.query(TrackFrame)
+        .filter(TrackFrame.track_id == track.id)
+        .order_by(TrackFrame.frame_number)
+        .all()
+    )
+
+    jumps = []
+    for i in range(1, len(frames)):
+        prev, curr = frames[i - 1], frames[i]
+        cx_prev = (prev.bbox_x1 + prev.bbox_x2) / 2
+        cy_prev = (prev.bbox_y1 + prev.bbox_y2) / 2
+        cx_curr = (curr.bbox_x1 + curr.bbox_x2) / 2
+        cy_curr = (curr.bbox_y1 + curr.bbox_y2) / 2
+        dist = ((cx_curr - cx_prev) ** 2 + (cy_curr - cy_prev) ** 2) ** 0.5
+        h = prev.bbox_y2 - prev.bbox_y1
+        ratio = dist / h if h > 0 else 0
+
+        jumps.append({
+            "frame": curr.frame_number,
+            "distance_px": round(dist, 1),
+            "bbox_height": round(h, 1),
+            "jump_ratio": round(ratio, 3),
+        })
+
+    max_jump = max((j["jump_ratio"] for j in jumps), default=0)
+    threshold = settings.TRACK_SWITCH_MAX_JUMP
+
+    return {
+        "track_id": track.track_id,
+        "db_track_id": track.id,
+        "total_frames": len(frames),
+        "start_frame": track.start_frame,
+        "end_frame": track.end_frame,
+        "max_jump_ratio": round(max_jump, 3),
+        "spatial_threshold": threshold,
+        "would_spatial_split": max_jump > threshold,
+        "jumps": jumps,
+    }
