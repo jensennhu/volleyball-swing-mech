@@ -160,6 +160,10 @@ class TrainingRun(Base):
     test_f1 = Column(Float, nullable=True)
     test_auc = Column(Float, nullable=True)
 
+    # Architecture flags
+    bidirectional = Column(Boolean, nullable=True, default=False)
+    use_attention = Column(Boolean, nullable=True, default=False)
+
     # Artifacts
     checkpoint_dir = Column(String, nullable=True)
     notes = Column(Text, nullable=True)

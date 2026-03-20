@@ -41,6 +41,8 @@ class Settings:
     DEFAULT_CLASS_WEIGHT_POSITIVE: float = 2.0
     EARLY_STOPPING_PATIENCE: int = 15
     LR_REDUCE_PATIENCE: int = 7
+    DEFAULT_BIDIRECTIONAL: bool = True
+    DEFAULT_USE_ATTENTION: bool = True
 
     # Track post-processing
     TRACK_SWITCH_MAX_JUMP: float = 6.0   # max bbox-center displacement (in bbox heights); conservative for fast spike motions

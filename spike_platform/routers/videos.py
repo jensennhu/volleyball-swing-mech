@@ -16,6 +16,7 @@ from spike_platform.schemas.video import VideoResponse, VideoStatusResponse, Vid
 from spike_platform.schemas.segment import SegmentResponse, SegmentListResponse, TrackResponse, TrackRoleUpdate
 from spike_platform.worker import worker
 from spike_platform.services.video_processing import process_video_pipeline
+from spike_platform.services.event_clustering import cluster_spike_events
 
 router = APIRouter()
 
@@ -32,6 +33,23 @@ def _video_to_response(video: Video, db: Session) -> VideoResponse:
         .filter(Segment.video_id == video.id, Segment.human_label.isnot(None))
         .scalar()
     )
+
+    # Spike event count: prefer human labels, fall back to model predictions
+    human_spike_segs = (
+        db.query(Segment)
+        .filter(Segment.video_id == video.id, Segment.human_label == 1)
+        .all()
+    )
+    if human_spike_segs:
+        spike_segs = human_spike_segs
+    else:
+        spike_segs = (
+            db.query(Segment)
+            .filter(Segment.video_id == video.id, Segment.prediction == 1)
+            .all()
+        )
+    spike_event_count = len(cluster_spike_events(spike_segs, db))
+
     return VideoResponse(
         id=video.id,
         filename=video.filename,
@@ -46,6 +64,7 @@ def _video_to_response(video: Video, db: Session) -> VideoResponse:
         track_count=track_count,
         segment_count=segment_count,
         labeled_count=labeled_count,
+        spike_event_count=spike_event_count,
         created_at=video.created_at,
         updated_at=video.updated_at,
     )
@@ -246,6 +265,37 @@ def get_frame(video_id: str, frame_num: int, db: Session = Depends(get_db)):
 
     _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
     return Response(content=buffer.tobytes(), media_type="image/jpeg")
+
+
+@router.patch("/videos/{video_id}/segments/label-unlabeled")
+def label_all_unlabeled(
+    video_id: str,
+    track_id: int | None = Query(None),
+    human_label: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Set human_label on every unlabeled segment for a video (or a specific track).
+    Does not filter by role — labels all unlabeled segments regardless of track role.
+    """
+    if human_label not in (0, 1):
+        raise HTTPException(400, "human_label must be 0 or 1")
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+
+    query = db.query(Segment).filter(
+        Segment.video_id == video_id,
+        Segment.human_label.is_(None),
+    )
+    if track_id is not None:
+        query = query.filter(Segment.track_id == track_id)
+
+    count = query.update(
+        {"human_label": human_label, "labeled_at": now},
+        synchronize_session="fetch",
+    )
+    db.commit()
+    return {"updated": count}
 
 
 @router.get("/videos/{video_id}/segments", response_model=SegmentListResponse)

@@ -42,6 +42,8 @@ class SpikeTrainer:
         class_weight_positive: float = 2.0,
         early_stopping_patience: int = 15,
         lr_reduce_patience: int = 7,
+        bidirectional: bool = False,
+        use_attention: bool = False,
     ):
         self.input_dim = input_dim
         self.lstm_units = lstm_units or [64, 32]
@@ -52,12 +54,16 @@ class SpikeTrainer:
         self.class_weight_positive = class_weight_positive
         self.early_stopping_patience = early_stopping_patience
         self.lr_reduce_patience = lr_reduce_patience
+        self.bidirectional = bidirectional
+        self.use_attention = use_attention
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = SpikeLSTM(
             input_dim=input_dim,
             lstm_units=self.lstm_units,
             dropout=dropout,
+            bidirectional=bidirectional,
+            use_attention=use_attention,
         ).to(self.device)
         self.scaler = StandardScaler()
 
@@ -231,6 +237,8 @@ class SpikeTrainer:
             "input_dim": self.input_dim,
             "lstm_units": self.lstm_units,
             "dropout": self.dropout,
+            "bidirectional": self.bidirectional,
+            "use_attention": self.use_attention,
             "best_epoch": self.best_epoch,
             "saved_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -246,6 +254,8 @@ class SpikeTrainer:
             input_dim=config["input_dim"],
             lstm_units=config["lstm_units"],
             dropout=config["dropout"],
+            bidirectional=config.get("bidirectional", False),
+            use_attention=config.get("use_attention", False),
         )
 
         state_dict = torch.load(

@@ -13,6 +13,7 @@ from typing import Callable, Optional
 import joblib
 import numpy as np
 import torch
+from sqlalchemy import or_
 
 from spike_platform.config import settings
 from spike_platform.database import SessionLocal
@@ -127,7 +128,7 @@ def run_phase_inference(
             .join(Track, Segment.track_id == Track.id)
             .filter(
                 Segment.video_id == video_id,
-                Segment.human_label == 1,
+                or_(Segment.human_label == 1, Segment.prediction == 1),
                 Track.role != "non_player",
             )
             .all()

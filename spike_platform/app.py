@@ -4,6 +4,7 @@ FastAPI application factory for the volleyball spike detector platform.
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
@@ -25,13 +26,23 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # CORS — allow mobile app and dev origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     # Register API routers
-    from spike_platform.routers import videos, segments, training, phases, analysis
+    from spike_platform.routers import videos, segments, training, phases, analysis, mobile
     app.include_router(videos.router, prefix="/api", tags=["videos"])
     app.include_router(segments.router, prefix="/api", tags=["segments"])
     app.include_router(training.router, prefix="/api", tags=["training"])
     app.include_router(phases.router, prefix="/api", tags=["phases"])
     app.include_router(analysis.router, prefix="/api", tags=["analysis"])
+    app.include_router(mobile.router, prefix="/api", tags=["mobile"])
 
     # Serve frontend static files
     static_dir = Path(__file__).parent / "static"

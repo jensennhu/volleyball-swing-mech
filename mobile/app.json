@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Spike Analyzer",
+    "slug": "spike-analyzer",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "spike-analyzer",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Record volleyball spikes for analysis",
+        "NSMicrophoneUsageDescription": "Record audio with spike videos",
+        "NSPhotoLibraryUsageDescription": "Upload spike videos from your library",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "permissions": ["CAMERA", "RECORD_AUDIO"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Record volleyball spikes for analysis",
+          "microphonePermission": "Record audio with spike videos"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Upload spike videos from your library"
+        }
+      ]
+    ]
+  }
+}

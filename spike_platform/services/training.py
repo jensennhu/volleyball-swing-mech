@@ -220,6 +220,8 @@ def run_training(
             learning_rate=run.learning_rate,
             batch_size=run.batch_size,
             epochs=run.epochs,
+            bidirectional=getattr(run, "bidirectional", False) or False,
+            use_attention=getattr(run, "use_attention", False) or False,
         )
 
         def on_epoch(epoch, train_loss, val_loss):

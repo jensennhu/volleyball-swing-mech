@@ -44,6 +44,7 @@
                         <th>Tracks</th>
                         <th>Segments</th>
                         <th>Labeled</th>
+                        <th>Events</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -60,12 +61,15 @@
             <button data-review-mode="phase">Phase Annotation</button>
             <button data-review-mode="role">Role ID</button>
             <button data-review-mode="analysis">Analysis</button>
+            <button data-review-mode="events">Events</button>
         </div>
 
         <div class="review-layout">
             <div class="video-panel">
                 <div class="video-container" id="video-container">
                     <video id="review-video" controls></video>
+                    <!-- Overlay: blocks click-to-play in spike mode. Height stops before controls bar (~48px) so play/seek still work. -->
+                    <div id="spike-click-overlay" style="position:absolute; top:0; left:0; width:100%; height:calc(100% - 48px); pointer-events:none; z-index:1;"></div>
                     <canvas id="bbox-canvas"></canvas>
                 </div>
                 <div class="video-controls">
@@ -124,13 +128,21 @@
                         <button class="btn btn-sm btn-outline" data-filter="unlabeled">Unlabeled</button>
                     </div>
 
-                    <div class="shortcuts-hint">
-                        <kbd>S</kbd> spike &nbsp; <kbd>N</kbd> non-spike &nbsp;
-                        <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate
+                    <!-- Track filter badge (shown when user clicks a person on canvas) -->
+                    <div id="track-filter-bar" style="display:none; margin-top:6px; align-items:center; gap:6px; padding:5px 8px; background:var(--surface); border:1px solid var(--primary); border-radius:var(--radius); font-size:12px;">
+                        <span id="track-filter-label" style="color:var(--primary); font-weight:600;"></span>
+                        <button class="btn btn-sm btn-outline" onclick="clearTrackFilter()" style="padding:1px 6px; font-size:11px;">✕ Show all</button>
                     </div>
-                    <div style="margin-top:8px;">
+
+                    <div class="shortcuts-hint" style="margin-top:6px;">
+                        <kbd>S</kbd> spike &nbsp; <kbd>N</kbd> non-spike &nbsp;
+                        <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate &nbsp;
+                        click person to filter
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                         <button class="btn btn-sm btn-primary" id="accept-spike-predictions-btn">Accept All Predictions</button>
-                        <span id="accept-spike-status" style="font-size:12px; color:var(--text-muted); margin-left:8px;"></span>
+                        <button class="btn btn-sm btn-outline" id="btn-set-all-non-spike" onclick="setAllUnlabeledNonSpike()">Set Unlabeled → Non-Spike</button>
+                        <span id="accept-spike-status" style="font-size:12px; color:var(--text-muted);"></span>
                     </div>
                 </div>
 
@@ -147,6 +159,15 @@
                         All player tracks with model predictions overlaid on video.
                         Ball detections shown in yellow.
                     </div>
+                </div>
+
+                <!-- Events review mode controls -->
+                <div id="events-mode-controls" style="display:none;">
+                    <div class="shortcuts-hint" style="margin-bottom:6px;">
+                        Click an event to seek. &nbsp;
+                        <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate &nbsp;·&nbsp; Reject removes it.
+                    </div>
+                    <div id="events-stats" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;"></div>
                 </div>
 
                 <!-- Role ID mode controls -->
@@ -312,6 +333,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="app.js?v=30"></script>
+    <script src="app.js?v=36"></script>
 </body>
 </html>

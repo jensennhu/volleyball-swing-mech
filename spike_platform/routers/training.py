@@ -82,6 +82,8 @@ def start_training(config: TrainingConfig, db: Session = Depends(get_db)):
         window_size=settings.WINDOW_SIZE,
         dropout=config.dropout,
         balance_by_group=config.balance_by_group,
+        bidirectional=config.bidirectional,
+        use_attention=config.use_attention,
     )
     db.add(run)
     db.commit()

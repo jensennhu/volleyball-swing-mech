@@ -4,8 +4,11 @@ import json
 import math
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from spike_platform.database import get_db
@@ -17,8 +20,14 @@ from spike_platform.models.db_models import (
     TrackFrame,
     Video,
 )
+from spike_platform.services.event_clustering import cluster_spike_events
 
 router = APIRouter()
+
+
+class RejectEventBody(BaseModel):
+    segment_ids: list[int]
+
 
 # Assumed player height for pixel-to-real-world conversion
 PLAYER_HEIGHT_M = 1.83  # 6'0" — typical volleyball player
@@ -27,7 +36,11 @@ MS_TO_MPH = 2.23694
 
 
 @router.get("/videos/{video_id}/spike-analysis")
-def get_spike_analysis(video_id: str, db: Session = Depends(get_db)):
+def get_spike_analysis(
+    video_id: str,
+    db: Session = Depends(get_db),
+    include_predicted: bool = Query(False, description="Include model-predicted spikes/phases (for mobile)"),
+):
     """Compute biomechanical metrics per track with phase-annotated spikes."""
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
@@ -37,12 +50,22 @@ def get_spike_analysis(video_id: str, db: Session = Depends(get_db)):
     vid_height = video.height or 1080
     vid_width = video.width or 1920
 
-    # Find spike segments with human-annotated phases, grouped by track
-    spike_segments = (
-        db.query(Segment)
-        .filter(Segment.video_id == video_id, Segment.human_label == 1)
-        .all()
-    )
+    # Find spike segments, grouped by track
+    if include_predicted:
+        spike_segments = (
+            db.query(Segment)
+            .filter(
+                Segment.video_id == video_id,
+                or_(Segment.human_label == 1, Segment.prediction == 1),
+            )
+            .all()
+        )
+    else:
+        spike_segments = (
+            db.query(Segment)
+            .filter(Segment.video_id == video_id, Segment.human_label == 1)
+            .all()
+        )
 
     seg_ids_by_track = defaultdict(list)
     for seg in spike_segments:
@@ -51,16 +74,16 @@ def get_spike_analysis(video_id: str, db: Session = Depends(get_db)):
     # For each track, merge phase boundaries across overlapping segments
     tracks_with_phases = {}
     for track_pk, seg_ids in seg_ids_by_track.items():
+        phase_filter = [SegmentPhase.segment_id.in_(seg_ids)]
+        if not include_predicted:
+            phase_filter.append(SegmentPhase.human_label.isnot(None))
         merged = (
             db.query(
                 SegmentPhase.phase,
                 func.min(SegmentPhase.start_frame).label("start_frame"),
                 func.max(SegmentPhase.end_frame).label("end_frame"),
             )
-            .filter(
-                SegmentPhase.segment_id.in_(seg_ids),
-                SegmentPhase.human_label.isnot(None),
-            )
+            .filter(*phase_filter)
             .group_by(SegmentPhase.phase)
             .all()
         )
@@ -70,16 +93,28 @@ def get_spike_analysis(video_id: str, db: Session = Depends(get_db)):
                 phase_dict[row.phase] = {"start": row.start_frame, "end": row.end_frame}
             tracks_with_phases[track_pk] = phase_dict
 
+    # When include_predicted, also include tracks with spike segments but no phases
+    if include_predicted:
+        for track_pk in seg_ids_by_track:
+            if track_pk not in tracks_with_phases:
+                tracks_with_phases[track_pk] = {}
+
     results = []
     for track_pk, phase_dict in tracks_with_phases.items():
         track = db.query(Track).filter(Track.id == track_pk).first()
         if not track:
             continue
 
-        all_starts = [p["start"] for p in phase_dict.values()]
-        all_ends = [p["end"] for p in phase_dict.values()]
-        frame_min = min(all_starts)
-        frame_max = max(all_ends)
+        if phase_dict:
+            all_starts = [p["start"] for p in phase_dict.values()]
+            all_ends = [p["end"] for p in phase_dict.values()]
+            frame_min = min(all_starts)
+            frame_max = max(all_ends)
+        else:
+            # No phases — use spike segment frame ranges
+            segs = [s for s in spike_segments if s.track_id == track_pk]
+            frame_min = min(s.start_frame for s in segs)
+            frame_max = max(s.end_frame for s in segs)
 
         track_frames = (
             db.query(TrackFrame)
@@ -470,3 +505,103 @@ def get_spike_analysis(video_id: str, db: Session = Depends(get_db)):
         "height": vid_height,
         "tracks": results,
     }
+
+
+@router.get("/videos/{video_id}/spike-events")
+def get_spike_events(
+    video_id: str,
+    source: str = Query("human", description="Label source: 'human', 'predicted', or 'either'"),
+    db: Session = Depends(get_db),
+):
+    """
+    Return spike events (clustered consecutive positive segments) per track.
+    Only events that have both a jump and swing phase are counted.
+    """
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Video not found")
+
+    if source == "human":
+        spike_segs = (
+            db.query(Segment)
+            .filter(Segment.video_id == video_id, Segment.human_label == 1)
+            .all()
+        )
+        # Fall back to predictions if no human labels exist
+        if not spike_segs:
+            spike_segs = (
+                db.query(Segment)
+                .filter(Segment.video_id == video_id, Segment.prediction == 1)
+                .all()
+            )
+            source = "predicted"
+    elif source == "predicted":
+        spike_segs = (
+            db.query(Segment)
+            .filter(Segment.video_id == video_id, Segment.prediction == 1)
+            .all()
+        )
+    else:  # either
+        spike_segs = (
+            db.query(Segment)
+            .filter(
+                Segment.video_id == video_id,
+                or_(Segment.human_label == 1, Segment.prediction == 1),
+            )
+            .all()
+        )
+
+    events = cluster_spike_events(spike_segs, db)
+
+    # Group events by track for the response
+    by_track = defaultdict(list)
+    for ev in events:
+        by_track[ev["track_id"]].append(ev)
+
+    fps = video.fps or 30
+    tracks_out = []
+    for track_id, track_events in sorted(by_track.items()):
+        events_out = []
+        for ev in track_events:
+            duration_s = (ev["end_frame"] - ev["start_frame"]) / fps
+            events_out.append({
+                "start_frame": ev["start_frame"],
+                "end_frame": ev["end_frame"],
+                "duration_seconds": round(duration_s, 2),
+                "confidence": round(ev["confidence"], 3) if ev["confidence"] is not None else None,
+                "phases_present": ev["phases_present"],
+                "segment_count": ev["segment_count"],
+                "segment_ids": ev["segment_ids"],
+            })
+        tracks_out.append({
+            "track_id": track_id,
+            "spike_count": len(events_out),
+            "events": events_out,
+        })
+
+    return {
+        "video_id": video_id,
+        "source": source,
+        "total_events": len(events),
+        "tracks": tracks_out,
+    }
+
+
+@router.patch("/videos/{video_id}/segments/reject-event")
+def reject_event_segments(video_id: str, body: RejectEventBody, db: Session = Depends(get_db)):
+    """
+    Label specific segments as non-spike (human_label=0).
+    Used to reject a detected spike event that was a false positive.
+    Targets exact segment IDs rather than all unlabeled, so it can
+    override previously confirmed labels too.
+    """
+    if not body.segment_ids:
+        return {"updated": 0}
+    now = datetime.now(timezone.utc)
+    count = (
+        db.query(Segment)
+        .filter(Segment.video_id == video_id, Segment.id.in_(body.segment_ids))
+        .update({"human_label": 0, "labeled_at": now}, synchronize_session="fetch")
+    )
+    db.commit()
+    return {"updated": count}

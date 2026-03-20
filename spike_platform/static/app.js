@@ -46,6 +46,15 @@ const state = {
     filteredRoleTracks: [],    // after role filter applied
     selectedRoleTrackIdx: -1,
     roleFilter: 'all',         // 'all' | 'player' | 'non_player' | 'unknown'
+    // Track-click filter (spike mode)
+    filterTrackId: null,       // db Track.id (PK) — null = show all
+    analysisTrackBboxes: null, // player tracks from analysis, for canvas click detection
+    hoverTrackId: null,        // db Track.id currently hovered on canvas
+
+    // Spike events review mode
+    spikeEvents: [],           // flat list of event dicts from /spike-events
+    selectedEventIdx: null,    // index into spikeEvents
+    eventEndTime: null,        // seconds — auto-pause target for selected event
 };
 
 // ─── Navigation ───────────────────────────────────────────────────
@@ -193,6 +202,7 @@ async function loadVideos() {
             <td>${v.track_count}</td>
             <td>${v.segment_count}</td>
             <td>${v.labeled_count}/${v.segment_count}</td>
+            <td>${v.spike_event_count > 0 ? `<span style="font-weight:600; color:var(--primary);">${v.spike_event_count}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
             <td>
                 ${v.status === 'processed' || v.status === 'predicted' || v.status === 'error' ? `<button class="btn btn-sm btn-primary" onclick="reprocessVideo('${v.id}')">Reprocess</button>` : ''}
                 <button class="btn btn-sm btn-outline" onclick="openReview('${v.id}')">Review</button>
@@ -283,6 +293,7 @@ document.getElementById('review-mode-toggle').addEventListener('click', e => {
     document.getElementById('phase-mode-controls').style.display = mode === 'phase' ? '' : 'none';
     document.getElementById('role-mode-controls').style.display = mode === 'role' ? '' : 'none';
     document.getElementById('analysis-mode-controls').style.display = mode === 'analysis' ? '' : 'none';
+    document.getElementById('events-mode-controls').style.display = mode === 'events' ? '' : 'none';
     document.getElementById('phase-annotation-panel').style.display = 'none';
 
     // Reset selection and reload segments for the new mode
@@ -295,6 +306,13 @@ document.getElementById('review-mode-toggle').addEventListener('click', e => {
     state.phaseTrackSegments = [];
     state.trackBboxes = [];
     state.analysisData = null;
+    state.filterTrackId = null;
+    state.hoverTrackId = null;
+    state.spikeEvents = [];
+    state.selectedEventIdx = null;
+    state.eventEndTime = null;
+    updateTrackFilterUI();
+    updateSpikeOverlay();
     clearBbox();
 
     if (mode === 'phase') {
@@ -311,6 +329,8 @@ document.getElementById('review-mode-toggle').addEventListener('click', e => {
         loadAnalysisData();
     } else if (mode === 'role') {
         loadRoleTracks();
+    } else if (mode === 'events') {
+        loadSpikeEvents();
     } else {
         loadSegments();
     }
@@ -339,6 +359,16 @@ async function openReview(videoId) {
     switchView('review');
     state.reviewVideoId = videoId;
 
+    // Reset track filter and events state when switching videos
+    state.filterTrackId = null;
+    state.analysisTrackBboxes = null;
+    state.hoverTrackId = null;
+    state.spikeEvents = [];
+    state.selectedEventIdx = null;
+    state.eventEndTime = null;
+    updateTrackFilterUI();
+    updateSpikeOverlay();
+
     const video = await api(`/videos/${videoId}`);
     state.reviewVideoFps = video.fps || 30;
     state.reviewVideoWidth = video.width;
@@ -354,10 +384,19 @@ async function openReview(videoId) {
         document.getElementById('frame-counter').textContent = `Frame: ${frame}`;
         document.getElementById('time-display').textContent = `${videoEl.currentTime.toFixed(2)}s`;
         drawBbox(frame);
+        // Auto-pause at end of selected spike event
+        if (state.reviewMode === 'events' && state.eventEndTime != null) {
+            if (videoEl.currentTime >= state.eventEndTime) {
+                videoEl.pause();
+            }
+        }
     };
 
     // Update select
     reviewVideoSelect.value = videoId;
+
+    // Load analysis bboxes for canvas click detection (non-blocking)
+    loadAnalysisBboxes();
 
     if (state.reviewMode === 'analysis') {
         loadAnalysisData();
@@ -383,6 +422,11 @@ async function loadSegments() {
 
     // Always filter to player tracks (non-player excluded) in spike/phase modes
     filter += '&role=player';
+
+    // Filter to a specific track when selected via canvas click
+    if (state.filterTrackId != null && state.reviewMode === 'spike') {
+        filter += `&track_id=${state.filterTrackId}`;
+    }
 
     const data = await api(`/videos/${state.reviewVideoId}/segments?per_page=200${filter}`);
     state.segments = data.segments;
@@ -623,6 +667,140 @@ async function acceptAllSpikePredictions() {
         await loadSegments();
     } catch (e) {
         statusEl.textContent = `Error: ${e.message}`;
+    }
+}
+
+async function setAllUnlabeledNonSpike() {
+    if (!state.reviewVideoId) return;
+    const statusEl = document.getElementById('accept-spike-status');
+
+    // Get a count first so the confirm dialog is informative
+    const trackFilter = state.filterTrackId != null ? `&track_id=${state.filterTrackId}` : '';
+    let previewCount = 0;
+    try {
+        const preview = await api(
+            `/videos/${state.reviewVideoId}/segments?unlabeled_only=true&per_page=1${trackFilter}`
+        );
+        previewCount = preview.total;
+    } catch { /* ignore, proceed anyway */ }
+
+    const scope = state.filterTrackId != null ? 'for this track' : 'for this video';
+    if (!confirm(`Label ${previewCount} unlabeled segments as Non-Spike ${scope}?`)) return;
+
+    statusEl.textContent = 'Labeling...';
+    try {
+        // Single server-side query — no pagination, no role filter exclusions
+        const trackParam = state.filterTrackId != null ? `&track_id=${state.filterTrackId}` : '';
+        const r = await api(
+            `/videos/${state.reviewVideoId}/segments/label-unlabeled?human_label=0${trackParam}`,
+            { method: 'PATCH' },
+        );
+        statusEl.textContent = `Labeled ${r.updated} as non-spike`;
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        await loadSegments();
+    } catch (e) {
+        statusEl.textContent = `Error: ${e.message}`;
+    }
+}
+
+// ── Spike Events Review Mode ──────────────────────────────────────────────────
+
+async function loadSpikeEvents() {
+    if (!state.reviewVideoId) return;
+    const list = document.getElementById('segment-list');
+    list.innerHTML = '<div style="padding:12px; color:var(--text-muted); font-size:13px;">Loading events...</div>';
+    try {
+        const data = await api(`/videos/${state.reviewVideoId}/spike-events`);
+        // Flatten all track events into one list sorted by time
+        state.spikeEvents = [];
+        for (const t of (data.tracks || [])) {
+            for (const ev of t.events) {
+                state.spikeEvents.push({ ...ev, track_id: t.track_id });
+            }
+        }
+        state.spikeEvents.sort((a, b) => a.start_frame - b.start_frame);
+        state.selectedEventIdx = null;
+        state.eventEndTime = null;
+        renderEventList();
+        const statsEl = document.getElementById('events-stats');
+        if (statsEl) {
+            const n = state.spikeEvents.length;
+            statsEl.textContent = `${n} spike event${n !== 1 ? 's' : ''} detected (${data.source})`;
+        }
+    } catch (e) {
+        list.innerHTML = `<div style="padding:12px; color:var(--text-muted);">Error: ${e.message}</div>`;
+    }
+}
+
+function renderEventList() {
+    const list = document.getElementById('segment-list');
+    list.innerHTML = '';
+    if (state.spikeEvents.length === 0) {
+        list.innerHTML = '<div style="padding:12px; color:var(--text-muted); font-size:13px;">No spike events found. Label spikes and run phase inference first.</div>';
+        return;
+    }
+    const fps = state.reviewVideoFps || 30;
+    state.spikeEvents.forEach((ev, i) => {
+        const startS = (ev.start_frame / fps).toFixed(1);
+        const endS = (ev.end_frame / fps).toFixed(1);
+        const durS = ev.duration_seconds != null ? ev.duration_seconds.toFixed(1) : ((ev.end_frame - ev.start_frame) / fps).toFixed(1);
+        const phases = ev.phases_present ? ev.phases_present.join(' · ') : '';
+        const conf = ev.confidence != null ? `${(ev.confidence * 100).toFixed(0)}%` : '—';
+        const isSelected = state.selectedEventIdx === i;
+
+        const card = document.createElement('div');
+        card.className = 'segment-card' + (isSelected ? ' selected' : '');
+        card.onclick = () => selectEvent(i);
+        card.innerHTML = `
+            <div class="meta">Track ${ev.track_id} &nbsp;·&nbsp; ${startS}s – ${endS}s &nbsp;(${durS}s)</div>
+            <div class="seg-fields">
+                <span class="seg-field"><span class="seg-label">Phases</span> ${esc(phases)}</span>
+                <span class="seg-field"><span class="seg-label">Conf</span> ${conf}</span>
+            </div>
+            <div class="actions">
+                <button class="btn btn-sm btn-danger" onclick="rejectEvent(${i}, event)">Reject</button>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function selectEvent(idx) {
+    if (idx < 0 || idx >= state.spikeEvents.length) return;
+    state.selectedEventIdx = idx;
+    renderEventList();
+    const ev = state.spikeEvents[idx];
+    const videoEl = document.getElementById('review-video');
+    const fps = state.reviewVideoFps || 30;
+    state.eventEndTime = (ev.end_frame + 1) / fps;
+    videoEl.currentTime = ev.start_frame / fps;
+    drawBbox(ev.start_frame);
+}
+
+async function rejectEvent(idx, e) {
+    e.stopPropagation();
+    const ev = state.spikeEvents[idx];
+    if (!confirm(`Reject this event (${ev.segment_ids.length} segment${ev.segment_ids.length !== 1 ? 's' : ''})?`)) return;
+    try {
+        await api(`/videos/${state.reviewVideoId}/segments/reject-event`, {
+            method: 'PATCH',
+            body: JSON.stringify({ segment_ids: ev.segment_ids }),
+        });
+        state.spikeEvents.splice(idx, 1);
+        if (state.selectedEventIdx === idx) {
+            state.selectedEventIdx = null;
+            state.eventEndTime = null;
+        } else if (state.selectedEventIdx !== null && state.selectedEventIdx > idx) {
+            state.selectedEventIdx--;
+        }
+        renderEventList();
+        const statsEl = document.getElementById('events-stats');
+        if (statsEl) {
+            const n = state.spikeEvents.length;
+            statsEl.textContent = `${n} spike event${n !== 1 ? 's' : ''} detected`;
+        }
+    } catch (err) {
+        alert('Failed to reject: ' + err.message);
     }
 }
 
@@ -1264,6 +1442,28 @@ document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
     const seg = state.segments[state.selectedSegmentIdx];
+
+    if (state.reviewMode === 'events') {
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                if (state.selectedEventIdx === null) {
+                    if (state.spikeEvents.length > 0) selectEvent(0);
+                } else if (state.selectedEventIdx < state.spikeEvents.length - 1) {
+                    selectEvent(state.selectedEventIdx + 1);
+                    scrollSegmentIntoView();
+                }
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                if (state.selectedEventIdx > 0) {
+                    selectEvent(state.selectedEventIdx - 1);
+                    scrollSegmentIntoView();
+                }
+                break;
+        }
+        return;
+    }
 
     if (state.reviewMode === 'role') {
         // Role ID mode shortcuts
@@ -1965,6 +2165,47 @@ function drawBbox(currentFrame) {
         return;
     }
 
+    // Scale from video pixel coords to display coords (needed for hover highlight too)
+    const scaleX = rect.width / state.reviewVideoWidth;
+    const scaleY = rect.height / state.reviewVideoHeight;
+
+    // Draw hover highlight in spike mode (yellow dashed box with semi-transparent fill)
+    if (state.reviewMode === 'spike' && state.hoverTrackId != null) {
+        const hoverTrack = state.analysisTrackBboxes?.find(t => t.db_track_id === state.hoverTrackId);
+        if (hoverTrack) {
+            let hBbox = null, hDist = Infinity;
+            for (const f of hoverTrack._bboxFrames) {
+                const d = Math.abs(f - currentFrame);
+                if (d < hDist) { hDist = d; hBbox = hoverTrack._bboxByFrame[f]; }
+            }
+            if (hBbox && hDist <= 5) {
+                const [hx1, hy1, hx2, hy2] = hBbox;
+                const hdx = hx1 * scaleX, hdy = hy1 * scaleY;
+                const hdw = (hx2 - hx1) * scaleX, hdh = (hy2 - hy1) * scaleY;
+
+                ctx.save();
+                // Semi-transparent fill
+                ctx.fillStyle = 'rgba(255, 220, 50, 0.12)';
+                ctx.fillRect(hdx, hdy, hdw, hdh);
+                // Dashed yellow border
+                ctx.strokeStyle = 'rgba(255, 220, 50, 0.95)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 3]);
+                ctx.strokeRect(hdx, hdy, hdw, hdh);
+                ctx.setLineDash([]);
+                // Label
+                const hlabel = `Track ${hoverTrack.track_id}`;
+                ctx.font = '11px -apple-system, sans-serif';
+                const htw = ctx.measureText(hlabel).width;
+                ctx.fillStyle = 'rgba(255, 220, 50, 0.95)';
+                ctx.fillRect(hdx, hdy - 16, htw + 8, 16);
+                ctx.fillStyle = '#000';
+                ctx.fillText(hlabel, hdx + 4, hdy - 4);
+                ctx.restore();
+            }
+        }
+    }
+
     if (state.trackBboxes.length === 0) return;
 
     // Find the closest bbox to the current frame
@@ -1979,10 +2220,6 @@ function drawBbox(currentFrame) {
     if (minDist > 5) return;
 
     const [x1, y1, x2, y2] = closest.bbox;
-
-    // Scale from video pixel coords to display coords
-    const scaleX = rect.width / state.reviewVideoWidth;
-    const scaleY = rect.height / state.reviewVideoHeight;
 
     const dx = x1 * scaleX;
     const dy = y1 * scaleY;
@@ -2045,6 +2282,141 @@ async function loadAnalysisData() {
         segList.innerHTML = `<div style="padding:12px; color:#ef4444;">Failed to load analysis: ${e.message}</div>`;
     }
 }
+
+// ─── Track-Click Filter (Spike Mode) ──────────────────────────────
+
+async function loadAnalysisBboxes() {
+    if (!state.reviewVideoId) return;
+    try {
+        const data = await api(`/videos/${state.reviewVideoId}/analysis`);
+        state.analysisTrackBboxes = data.tracks
+            .filter(t => t.role !== 'non_player')
+            .map(t => {
+                const bboxByFrame = {};
+                const bboxFrames = [];
+                for (const b of t.bboxes) {
+                    bboxByFrame[b.frame] = b.bbox;
+                    bboxFrames.push(b.frame);
+                }
+                bboxFrames.sort((a, b) => a - b);
+                return {
+                    db_track_id: t.db_track_id,
+                    track_id: t.track_id,
+                    _bboxByFrame: bboxByFrame,
+                    _bboxFrames: bboxFrames,
+                };
+            });
+    } catch {
+        state.analysisTrackBboxes = null;
+    }
+}
+
+function findTrackAtPoint(videoX, videoY, frame) {
+    if (!state.analysisTrackBboxes) return null;
+    for (const track of state.analysisTrackBboxes) {
+        // Find closest bbox within 5 frames
+        let closestBbox = null;
+        let minDist = Infinity;
+        for (const f of track._bboxFrames) {
+            const d = Math.abs(f - frame);
+            if (d < minDist) { minDist = d; closestBbox = track._bboxByFrame[f]; }
+        }
+        if (!closestBbox || minDist > 5) continue;
+        const [x1, y1, x2, y2] = closestBbox;
+        if (videoX >= x1 && videoX <= x2 && videoY >= y1 && videoY <= y2) {
+            return track;
+        }
+    }
+    return null;
+}
+
+function updateTrackFilterUI() {
+    const bar = document.getElementById('track-filter-bar');
+    const label = document.getElementById('track-filter-label');
+    if (!bar || !label) return;
+    if (state.filterTrackId != null) {
+        const trackData = state.analysisTrackBboxes?.find(t => t.db_track_id === state.filterTrackId);
+        const displayId = trackData ? trackData.track_id : state.filterTrackId;
+        label.textContent = `Track ${displayId} selected`;
+        bar.style.display = 'flex';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function clearTrackFilter() {
+    state.filterTrackId = null;
+    updateTrackFilterUI();
+    loadSegments();
+}
+
+function updateSpikeOverlay() {
+    const overlay = document.getElementById('spike-click-overlay');
+    if (overlay) {
+        // Enable in spike mode: intercepts clicks on video body so click-to-play doesn't fire.
+        // Browser native controls are rendered above DOM overlays, so they remain clickable.
+        overlay.style.pointerEvents = state.reviewMode === 'spike' ? 'auto' : 'none';
+    }
+}
+
+// Track click: select a person on the video to filter segments.
+// The canvas has pointer-events:none so we listen on the container div instead.
+(function setupTrackClickHandler() {
+    const container = document.getElementById('video-container');
+
+    container.addEventListener('click', (e) => {
+        if (state.reviewMode !== 'spike') return;
+        if (!state.analysisTrackBboxes) return;
+
+        const videoEl = document.getElementById('review-video');
+        const rect = videoEl.getBoundingClientRect();
+        const videoX = (e.clientX - rect.left) * state.reviewVideoWidth / rect.width;
+        const videoY = (e.clientY - rect.top) * state.reviewVideoHeight / rect.height;
+        const frame = Math.round(videoEl.currentTime * state.reviewVideoFps);
+
+        const hit = findTrackAtPoint(videoX, videoY, frame);
+        if (hit) {
+            state.filterTrackId = hit.db_track_id;
+            updateTrackFilterUI();
+            loadSegments();
+        }
+        // Clicking empty space does nothing — use the "✕ Show all" badge button to clear
+    });
+
+    // Hover highlight + pointer cursor in spike mode
+    container.addEventListener('mousemove', (e) => {
+        if (state.reviewMode !== 'spike' || !state.analysisTrackBboxes) {
+            if (state.hoverTrackId !== null) {
+                state.hoverTrackId = null;
+                const videoEl = document.getElementById('review-video');
+                drawBbox(Math.round(videoEl.currentTime * state.reviewVideoFps));
+            }
+            container.style.cursor = '';
+            return;
+        }
+        const videoEl = document.getElementById('review-video');
+        const rect = videoEl.getBoundingClientRect();
+        const videoX = (e.clientX - rect.left) * state.reviewVideoWidth / rect.width;
+        const videoY = (e.clientY - rect.top) * state.reviewVideoHeight / rect.height;
+        const frame = Math.round(videoEl.currentTime * state.reviewVideoFps);
+        const hit = findTrackAtPoint(videoX, videoY, frame);
+        const newHoverId = hit ? hit.db_track_id : null;
+        container.style.cursor = hit ? 'pointer' : '';
+        if (newHoverId !== state.hoverTrackId) {
+            state.hoverTrackId = newHoverId;
+            drawBbox(frame);
+        }
+    });
+
+    container.addEventListener('mouseleave', () => {
+        if (state.hoverTrackId !== null) {
+            state.hoverTrackId = null;
+            const videoEl = document.getElementById('review-video');
+            drawBbox(Math.round(videoEl.currentTime * state.reviewVideoFps));
+        }
+        container.style.cursor = '';
+    });
+})();
 
 function drawAnalysisOverlay(ctx, rect, currentFrame) {
     const data = state.analysisData;
@@ -2238,7 +2610,17 @@ async function loadAllSelectedAnalyses() {
         const filename = cb.dataset.videoName;
         const color = cb.dataset.color;
         try {
-            const data = await api(`/videos/${videoId}/spike-analysis`);
+            const [data, eventsData] = await Promise.all([
+                api(`/videos/${videoId}/spike-analysis`),
+                api(`/videos/${videoId}/spike-events`).catch(() => null),
+            ]);
+            // Build a track_id → events[] lookup from the events endpoint
+            const eventsByTrack = {};
+            if (eventsData && eventsData.tracks) {
+                for (const et of eventsData.tracks) {
+                    eventsByTrack[et.track_id] = et.events;
+                }
+            }
             if (data.tracks) {
                 for (const t of data.tracks) {
                     allTracks.push({
@@ -2250,6 +2632,7 @@ async function loadAllSelectedAnalyses() {
                         _width: data.width,
                         _height: data.height,
                         _idx: idx++,
+                        _spike_events: eventsByTrack[t.track_id] || null,
                     });
                 }
             }
@@ -2563,8 +2946,30 @@ function renderTrackCard(track, data) {
         const ph = track.phases[p];
         return `${p}: ${ph.start}\u2013${ph.end}`;
     }).join(' \u00b7 ');
+
+    const spikeEvents = track._spike_events;
+    const spikeCount = spikeEvents ? spikeEvents.length : null;
+    const fps = data.fps || 30;
+    let eventHtml = '';
+    if (spikeEvents && spikeEvents.length > 0) {
+        const badge = `<span style="background:var(--primary); color:white; border-radius:10px; padding:1px 8px; font-size:11px; font-weight:600; margin-left:6px;">${spikeCount} spike${spikeCount !== 1 ? 's' : ''}</span>`;
+        let rangesHtml = '';
+        if (spikeEvents.length > 1) {
+            const ranges = spikeEvents.map((ev, i) => {
+                const startS = (ev.start_frame / fps).toFixed(1);
+                const endS = (ev.end_frame / fps).toFixed(1);
+                return `Spike ${i + 1}: ${startS}s\u2013${endS}s`;
+            }).join(' &nbsp;·&nbsp; ');
+            rangesHtml = `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${ranges}</div>`;
+        }
+        eventHtml = badge + rangesHtml;
+    }
+
     header.innerHTML = `
-        <span>Track ${track.track_id}</span>
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+            <span>Track ${track.track_id}</span>
+            ${eventHtml}
+        </div>
         <span style="font-size:11px; color:var(--text-muted);">${phaseSummary}</span>
     `;
     card.appendChild(header);

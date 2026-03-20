@@ -19,6 +19,7 @@ class VideoResponse(BaseModel):
     track_count: int = 0
     segment_count: int = 0
     labeled_count: int = 0
+    spike_event_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
 
